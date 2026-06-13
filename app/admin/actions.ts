@@ -1,0 +1,197 @@
+// app/admin/actions.ts
+"use server";
+
+import { db } from "@/db";
+import { articles, articleReferences, articleRevisions, suggestions } from "@/db/schema";
+import { requireAdmin } from "@/lib/auth-guard";
+import { redirect } from "next/navigation";
+import { eq } from "drizzle-orm";
+
+// turn "History of Jerusalem" into "history-of-jerusalem"
+function slugify(title: string) {
+  return title
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s-]/g, "")   // drop punctuation
+    .replace(/\s+/g, "-")        // spaces → dashes
+    .replace(/-+/g, "-");        // collapse repeats
+}
+
+export async function createArticle(formData: FormData) {
+  const session = await requireAdmin();
+  const userId = (session.user as any).id as string;
+
+  const title = (formData.get("title") as string)?.trim();
+  const summary = (formData.get("summary") as string)?.trim() || null;
+  const body = (formData.get("body") as string)?.trim();
+  const status = (formData.get("status") as string) || "draft";
+
+  if (!title || !body) {
+    throw new Error("Title and body are required.");
+  }
+
+  const slug = slugify(title);
+
+  // references come in as parallel arrays from the form
+  const refUrls = formData.getAll("ref_url") as string[];
+  const refTitles = formData.getAll("ref_title") as string[];
+  const refSources = formData.getAll("ref_source") as string[];
+
+  const newArticleId = await db.transaction(async (tx) => {
+    const [article] = await tx
+      .insert(articles)
+      .values({
+        slug,
+        title,
+        summary,
+        body,
+        status: status as any,
+        origin: "human",
+        createdBy: userId,
+        publishedAt: status === "published" ? new Date() : null,
+      })
+      .returning({ id: articles.id });
+
+    // first revision snapshot
+    await tx.insert(articleRevisions).values({
+      articleId: article.id,
+      title,
+      summary,
+      body,
+      editedBy: userId,
+      editorNote: "Initial creation",
+    });
+
+    // insert any references that have at least a URL or title
+    for (let i = 0; i < refUrls.length; i++) {
+      const url = refUrls[i]?.trim();
+      const refTitle = refTitles[i]?.trim();
+      const source = refSources[i]?.trim();
+      if (url || refTitle) {
+        await tx.insert(articleReferences).values({
+          articleId: article.id,
+          url: url || null,
+          title: refTitle || null,
+          sourceName: source || null,
+        });
+      }
+    }
+
+    return article.id;
+  });
+
+  redirect(`/admin?created=${newArticleId}`);
+}
+
+export async function updateArticle(formData: FormData) {
+  const session = await requireAdmin();
+  const userId = (session.user as any).id as string;
+
+  const articleId   = formData.get("articleId") as string;
+  const articleSlug = formData.get("articleSlug") as string;
+  const title       = (formData.get("title") as string)?.trim();
+  const summary     = (formData.get("summary") as string)?.trim() || null;
+  const body        = (formData.get("body") as string)?.trim();
+  const status      = (formData.get("status") as string) || "draft";
+  const editorNote  = (formData.get("editorNote") as string)?.trim() || null;
+
+  if (!title || !body) throw new Error("Title and body are required.");
+
+  const refUrls    = formData.getAll("ref_url")    as string[];
+  const refTitles  = formData.getAll("ref_title")  as string[];
+  const refSources = formData.getAll("ref_source") as string[];
+
+  await db.transaction(async (tx) => {
+    const [current] = await tx.select().from(articles).where(eq(articles.id, articleId));
+    if (!current) throw new Error("Article not found.");
+
+    await tx.insert(articleRevisions).values({
+      articleId,
+      title: current.title,
+      summary: current.summary,
+      body: current.body,
+      editedBy: userId,
+      editorNote,
+    });
+
+    await tx.update(articles)
+      .set({
+        title,
+        summary,
+        body,
+        status: status as any,
+        updatedAt: new Date(),
+        publishedAt: status === "published" && !current.publishedAt ? new Date() : current.publishedAt,
+      })
+      .where(eq(articles.id, articleId));
+
+    await tx.delete(articleReferences).where(eq(articleReferences.articleId, articleId));
+
+    for (let i = 0; i < refUrls.length; i++) {
+      const url      = refUrls[i]?.trim();
+      const refTitle = refTitles[i]?.trim();
+      const source   = refSources[i]?.trim();
+      if (url || refTitle) {
+        await tx.insert(articleReferences).values({
+          articleId,
+          url: url || null,
+          title: refTitle || null,
+          sourceName: source || null,
+        });
+      }
+    }
+  });
+
+  redirect(`/article/${articleSlug}`);
+}
+
+export async function acceptSuggestion(suggestionId: string, _formData: FormData) {
+  const session = await requireAdmin();
+  const userId = (session.user as any).id as string;
+
+  const [suggestion] = await db.select().from(suggestions).where(eq(suggestions.id, suggestionId));
+  if (!suggestion) throw new Error("Suggestion not found.");
+
+  const slug = slugify(suggestion.topic);
+
+  const newSlug = await db.transaction(async (tx) => {
+    const [article] = await tx
+      .insert(articles)
+      .values({
+        slug,
+        title: suggestion.topic,
+        body: "",
+        status: "draft",
+        origin: "user_suggestion",
+        createdBy: userId,
+      })
+      .returning({ id: articles.id, slug: articles.slug });
+
+    await tx
+      .update(suggestions)
+      .set({ status: "accepted", articleId: article.id })
+      .where(eq(suggestions.id, suggestionId));
+
+    return article.slug;
+  });
+
+  redirect(`/admin/edit/${newSlug}`);
+}
+
+export async function rejectSuggestion(suggestionId: string, formData: FormData) {
+  await requireAdmin();
+
+  const reviewNote = (formData.get("reviewNote") as string)?.trim();
+  if (!reviewNote) throw new Error("A rejection reason is required.");
+
+  await db
+    .update(suggestions)
+    .set({ status: "rejected", reviewNote })
+    .where(eq(suggestions.id, suggestionId));
+}
+
+export async function archiveArticle(id: string, _formData: FormData) {
+  await requireAdmin();
+  await db.update(articles).set({ status: "archived" }).where(eq(articles.id, id));
+  redirect("/admin");
+}

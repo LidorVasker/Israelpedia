@@ -1,0 +1,70 @@
+import { db } from "../../../db/index";
+import { articles, suggestions } from "../../../db/schema";
+import Anthropic from "@anthropic-ai/sdk";
+
+const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+
+export async function runDiscovery(): Promise<void> {
+  console.log("[Discovery] Starting...");
+
+  const existingArticles    = await db.select({ title: articles.title }).from(articles);
+  const existingSuggestions = await db.select({ topic: suggestions.topic }).from(suggestions);
+
+  const existingTopics = [
+    ...existingArticles.map((a) => a.title),
+    ...existingSuggestions.map((s) => s.topic),
+  ];
+
+  const prompt = `You are a topic discovery agent for IsraelPedia — an online encyclopedia focused on Israel and Jewish history, culture, religion, language, science, notable people, and communities worldwide.
+
+Suggest 5 new article topics that would make valuable additions to this encyclopedia. Each topic should be notable and factual with enough depth to support a full encyclopedia article.
+
+Existing topics to AVOID (do not suggest these or close variants):
+${existingTopics.map((t) => `- ${t}`).join("\n") || "(none yet)"}
+
+Respond ONLY in this JSON format — no markdown, no explanation:
+[
+  { "topic": "Topic Name", "rationale": "Why this topic belongs in IsraelPedia and what the article would cover." }
+]`;
+
+  let proposals: { topic: string; rationale: string }[] = [];
+  try {
+    const message = await client.messages.create({
+      model: "claude-haiku-4-5-20251001",
+      max_tokens: 1024,
+      messages: [{ role: "user", content: prompt }],
+    });
+    const text = (message.content[0] as any).text as string;
+    const clean = text.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "").trim();
+    proposals = JSON.parse(clean);
+    console.log(`[Discovery] Claude proposed ${proposals.length} topics`);
+  } catch (err) {
+    console.error("[Discovery] Anthropic call or JSON parse failed:", err);
+    return;
+  }
+
+  const existingLower = existingTopics.map((t) => t.toLowerCase());
+  let inserted = 0;
+
+  for (const p of proposals) {
+    if (!p.topic?.trim() || !p.rationale?.trim()) continue;
+    const topicLower = p.topic.toLowerCase();
+    const isDuplicate = existingLower.some(
+      (t) => t === topicLower || t.includes(topicLower) || topicLower.includes(t)
+    );
+    if (isDuplicate) {
+      console.log(`[Discovery] Skip duplicate: "${p.topic}"`);
+      continue;
+    }
+    await db.insert(suggestions).values({
+      topic: p.topic.trim(),
+      rationale: p.rationale.trim(),
+      suggestedBy: null,
+      status: "pending",
+    });
+    inserted++;
+    console.log(`[Discovery] Inserted: "${p.topic}"`);
+  }
+
+  console.log(`[Discovery] Done — inserted ${inserted} new suggestions.`);
+}

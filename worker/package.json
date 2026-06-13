@@ -1,0 +1,24 @@
+{
+  "name": "israelpedia-worker",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/worker/src/index.js",
+    "dev": "ts-node --transpile-only src/index.ts"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0",
+    "dotenv": "^17.0.0",
+    "drizzle-orm": "^0.45.2",
+    "node-cron": "^3.0.0",
+    "postgres": "^3.4.9"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/node-cron": "^3.0.0",
+    "next-auth": "^5.0.0-beta.31",
+    "ts-node": "^10.9.0",
+    "typescript": "^5"
+  }
+}
