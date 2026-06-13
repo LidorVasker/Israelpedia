@@ -3,7 +3,12 @@
 FROM node:20-alpine
 WORKDIR /app
 
-# Copy shared DB schema and index (needed at compile time and runtime)
+# Install root dependencies so tsc can resolve ../db/schema.ts imports
+# (e.g. drizzle-orm/pg-core, next-auth/adapters)
+COPY package*.json ./
+RUN npm install
+
+# Copy shared DB schema and index
 COPY db/ ./db/
 
 # Install worker dependencies
