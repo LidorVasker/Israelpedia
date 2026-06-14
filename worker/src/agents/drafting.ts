@@ -1,6 +1,6 @@
 import { db } from "../../../db/index";
 import { articles, articleReferences, articleRevisions } from "../../../db/schema";
-import { and, eq } from "drizzle-orm";
+import { and, eq, or } from "drizzle-orm";
 import Anthropic from "@anthropic-ai/sdk";
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
@@ -21,7 +21,7 @@ export async function runDrafting(): Promise<void> {
     .where(
       and(
         eq(articles.status, "draft"),
-        eq(articles.origin, "ai"),
+        or(eq(articles.origin, "ai"), eq(articles.origin, "user_suggestion")),
         eq(articles.body, "")
       )
     )
