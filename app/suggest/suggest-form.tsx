@@ -8,44 +8,63 @@ export default function SuggestForm() {
 
   if (state?.success) {
     return (
-      <p style={{ color: "green" }}>
-        Thanks — your suggestion has been submitted for review.
-      </p>
+      <div className="flex flex-col items-start gap-3 py-4 text-center sm:items-center sm:text-center">
+        <span className="flex h-12 w-12 items-center justify-center rounded-full bg-techelet/10 text-techelet">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M20 6 9 17l-5-5" />
+          </svg>
+        </span>
+        <h2 className="font-display text-2xl font-bold text-ink">Suggestion received</h2>
+        <p className="max-w-sm text-muted">
+          Thanks — your topic is in our review queue. If we cover it, you’ll be
+          able to read it right here.
+        </p>
+      </div>
     );
   }
 
   return (
-    <form action={action} style={{ display: "flex", flexDirection: "column", gap: "1rem", maxWidth: 480 }}>
+    <form action={action} className="flex flex-col gap-6">
       {state && !state.success && (
-        <p style={{ color: "red" }}>{state.error}</p>
+        <p className="rounded-md border border-[#b3261e]/30 bg-[#b3261e]/8 px-4 py-3 text-sm font-medium text-[#b3261e]">
+          {state.error}
+        </p>
       )}
-      <label>
-        Topic <span style={{ color: "red" }}>*</span>
+
+      <div>
+        <label htmlFor="topic" className="field-label">
+          Topic <span className="text-brass">*</span>
+        </label>
         <input
+          id="topic"
           name="topic"
           type="text"
           required
-          placeholder="e.g. Golda Meir"
-          style={{ display: "block", width: "100%", padding: "0.5rem", marginTop: "0.25rem" }}
+          placeholder="e.g. Golda Meir, the Dead Sea Scrolls, Ladino"
+          className="input"
         />
-      </label>
-      <label>
-        Why should we cover this?{" "}
-        <span style={{ color: "#888" }}>(optional)</span>
+      </div>
+
+      <div>
+        <label htmlFor="rationale" className="field-label">
+          Why should we cover this?{" "}
+          <span className="field-hint">(optional)</span>
+        </label>
         <textarea
+          id="rationale"
           name="rationale"
           rows={4}
-          placeholder="Briefly explain why this topic matters."
-          style={{ display: "block", width: "100%", padding: "0.5rem", marginTop: "0.25rem" }}
+          placeholder="A sentence or two on why this topic matters and what it should include."
+          className="textarea"
         />
-      </label>
-      <button
-        type="submit"
-        disabled={pending}
-        style={{ padding: "0.5rem 1rem", cursor: pending ? "not-allowed" : "pointer" }}
-      >
-        {pending ? "Submitting…" : "Submit suggestion"}
-      </button>
+      </div>
+
+      <div className="flex items-center gap-3">
+        <button type="submit" disabled={pending} className="btn btn-primary">
+          {pending ? "Submitting…" : "Submit suggestion"}
+        </button>
+        <span className="text-sm text-faint">Reviewed by a human editor.</span>
+      </div>
     </form>
   );
 }

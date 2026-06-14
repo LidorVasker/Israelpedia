@@ -3,6 +3,7 @@ import { db } from "@/db";
 import { articles, articleReferences } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
+import Link from "next/link";
 import ArticleEditForm from "./article-edit-form";
 
 export default async function EditArticlePage({
@@ -28,8 +29,16 @@ export default async function EditArticlePage({
   }));
 
   return (
-    <main style={{ padding: "2rem" }}>
-      <h1>Edit: {article.title}</h1>
+    <main className="mx-auto max-w-3xl px-4 py-10 sm:px-6">
+      <nav className="mb-6 text-sm" aria-label="Breadcrumb">
+        <Link href="/admin" className="text-muted transition-colors hover:text-techelet">
+          ← Back to articles
+        </Link>
+      </nav>
+      <header className="mb-8">
+        <span className="eyebrow">Editing</span>
+        <h1 className="mt-1.5 font-display text-3xl font-bold text-ink">{article.title}</h1>
+      </header>
       <ArticleEditForm
         article={{
           id: article.id,

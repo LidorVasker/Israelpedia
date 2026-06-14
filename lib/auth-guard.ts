@@ -14,10 +14,14 @@ export async function requireAdmin() {
   return session;
 }
 
-export async function requireUser() {
+export async function requireUser(callbackUrl?: string) {
   const session = await auth();
   if (!session?.user) {
-    redirect("/api/auth/signin");
+    redirect(
+      callbackUrl
+        ? `/api/auth/signin?callbackUrl=${encodeURIComponent(callbackUrl)}`
+        : "/api/auth/signin"
+    );
   }
   return session;
 }

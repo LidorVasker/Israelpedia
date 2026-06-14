@@ -1,26 +1,398 @@
 @import "tailwindcss";
 
+/* Class-based dark mode: .dark on <html> toggles the theme */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ------------------------------------------------------------------ */
+/*  Design tokens — "Techelet & Stone"                                 */
+/*  Semantic colors live as CSS vars so the .dark theme can override   */
+/*  them while keeping the same hue identity (just darker surfaces).   */
+/* ------------------------------------------------------------------ */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --paper: #f6f3ee;       /* page background — warm Jerusalem limestone */
+  --card: #fcfbf8;        /* raised surfaces, search field             */
+  --ink: #191b21;         /* primary text                              */
+  --muted: #5c606c;       /* secondary text, metadata                  */
+  --faint: #8a8e99;       /* tertiary / placeholder                    */
+  --techelet: #1b3b6b;    /* brand — wordmark, primary buttons         */
+  --techelet-strong: #16315a;
+  --azure: #1f5fa6;       /* links, interactive                        */
+  --brass: #b0883c;       /* signature accent — rules, eyebrows, dropcap */
+  --hairline: #e6e1d7;    /* borders, dividers                         */
+  --hairline-strong: #d8d1c2;
+  --on-brand: #f8fafc;    /* text on techelet/azure fills              */
+  --ring: #1f5fa6;
+  --shadow: 27 59 107;    /* techelet rgb, for soft shadows            */
+}
+
+.dark {
+  --paper: #15171c;       /* darkened, same warm-cool ink family       */
+  --card: #1d2027;
+  --ink: #ece9e2;         /* warm off-white                            */
+  --muted: #a3a7b2;
+  --faint: #777b86;
+  --techelet: #3f6fb0;    /* brand reads lighter on dark               */
+  --techelet-strong: #4f7fc0;
+  --azure: #6aa6e0;       /* links brightened for contrast             */
+  --brass: #cdab5e;       /* gilding, slightly brighter on dark        */
+  --hairline: #2b2f38;
+  --hairline-strong: #3a3f4a;
+  --on-brand: #f8fafc;
+  --ring: #6aa6e0;
+  --shadow: 0 0 0;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-paper: var(--paper);
+  --color-card: var(--card);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+  --color-techelet: var(--techelet);
+  --color-techelet-strong: var(--techelet-strong);
+  --color-azure: var(--azure);
+  --color-brass: var(--brass);
+  --color-hairline: var(--hairline);
+  --color-hairline-strong: var(--hairline-strong);
+  --color-on-brand: var(--on-brand);
+
+  --font-display: var(--font-frank-ruhl), Georgia, "Times New Roman", serif;
+  --font-serif: var(--font-source-serif), Georgia, "Times New Roman", serif;
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+
+  --radius-card: 0.625rem;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/* ------------------------------------------------------------------ */
+/*  Base                                                               */
+/* ------------------------------------------------------------------ */
+@layer base {
+  html {
+    color-scheme: light;
+  }
+  html.dark {
+    color-scheme: dark;
+  }
+  body {
+    background-color: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  ::selection {
+    background-color: color-mix(in srgb, var(--brass) 32%, transparent);
+  }
+  /* Visible, consistent keyboard focus everywhere */
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+    border-radius: 3px;
+  }
+  /* Respect reduced motion */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* ------------------------------------------------------------------ */
+/*  Components — reusable, consistent primitives                       */
+/* ------------------------------------------------------------------ */
+@layer components {
+  /* Eyebrow / category label — small-caps utility */
+  .eyebrow {
+    @apply inline-flex items-center gap-2 text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-brass;
+  }
+
+  /* Links inside running text */
+  .link {
+    @apply text-azure underline decoration-azure/30 underline-offset-2 transition-colors;
+  }
+  .link:hover {
+    @apply decoration-azure;
+  }
+
+  /* Buttons -------------------------------------------------------- */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-semibold font-sans transition-all duration-150 disabled:cursor-not-allowed disabled:opacity-55;
+    cursor: pointer;
+  }
+  .btn-primary {
+    background-color: var(--techelet);
+    color: var(--on-brand);
+  }
+  .btn-primary:hover:not(:disabled) {
+    background-color: var(--techelet-strong);
+  }
+  .btn-secondary {
+    background-color: transparent;
+    color: var(--ink);
+    box-shadow: inset 0 0 0 1px var(--hairline-strong);
+  }
+  .btn-secondary:hover:not(:disabled) {
+    box-shadow: inset 0 0 0 1px var(--techelet);
+    color: var(--techelet);
+  }
+  .btn-ghost {
+    @apply px-3 py-2 text-sm font-medium;
+    background-color: transparent;
+    color: var(--muted);
+  }
+  .btn-ghost:hover:not(:disabled) {
+    color: var(--techelet);
+  }
+  .btn-danger {
+    background-color: transparent;
+    color: #b3261e;
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, #b3261e 35%, transparent);
+  }
+  .btn-danger:hover:not(:disabled) {
+    background-color: color-mix(in srgb, #b3261e 8%, transparent);
+  }
+  .dark .btn-danger {
+    color: #f08a82;
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, #f08a82 35%, transparent);
+  }
+
+  /* Form fields ---------------------------------------------------- */
+  .input,
+  .textarea,
+  .select {
+    @apply w-full rounded-md px-3 py-2.5 text-[0.95rem] text-ink transition-colors;
+    background-color: var(--card);
+    box-shadow: inset 0 0 0 1px var(--hairline-strong);
+    font-family: var(--font-sans);
+  }
+  .input::placeholder,
+  .textarea::placeholder {
+    color: var(--faint);
+  }
+  .input:focus,
+  .textarea:focus,
+  .select:focus {
+    outline: none;
+    box-shadow: inset 0 0 0 2px var(--azure);
+  }
+  .textarea {
+    @apply leading-relaxed;
+    resize: vertical;
+  }
+  .field-label {
+    @apply block text-sm font-semibold text-ink mb-1.5;
+  }
+  .field-hint {
+    @apply font-normal text-faint;
+  }
+
+  /* Surfaces ------------------------------------------------------- */
+  .card {
+    background-color: var(--card);
+    border: 1px solid var(--hairline);
+    border-radius: var(--radius-card);
+  }
+
+  /* Badges & chips ------------------------------------------------- */
+  .badge {
+    @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold;
+  }
+  .chip {
+    @apply inline-flex items-center rounded-full px-3.5 py-1.5 text-sm font-medium transition-all;
+    background-color: var(--card);
+    color: var(--muted);
+    border: 1px solid var(--hairline);
+  }
+  .chip:hover {
+    color: var(--techelet);
+    border-color: var(--techelet);
+  }
+
+  /* Brass hairline rule */
+  .rule-brass {
+    height: 2px;
+    background: linear-gradient(
+      90deg,
+      var(--brass) 0%,
+      color-mix(in srgb, var(--brass) 35%, transparent) 60%,
+      transparent 100%
+    );
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/*  Article body — hand-typeset Markdown (no typography plugin)        */
+/* ------------------------------------------------------------------ */
+.prose-article {
+  font-family: var(--font-serif);
+  color: var(--ink);
+  font-size: 1.1875rem; /* ~19px */
+  line-height: 1.75;
+}
+.prose-article > * + * {
+  margin-top: 1.35em;
+}
+.prose-article h1 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 2rem;
+  line-height: 1.15;
+  letter-spacing: -0.015em;
+  margin-top: 2.4rem;
+}
+.prose-article h2 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.75rem;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  margin-top: 2.4rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid var(--hairline);
+}
+.prose-article h3 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.35rem;
+  line-height: 1.25;
+  margin-top: 2rem;
+}
+.prose-article h4 {
+  font-family: var(--font-sans);
+  font-weight: 700;
+  font-size: 1.05rem;
+  letter-spacing: 0.01em;
+  margin-top: 1.6rem;
+}
+.prose-article p {
+  margin: 0;
+}
+.prose-article a {
+  color: var(--azure);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--azure) 35%, transparent);
+  text-underline-offset: 2px;
+}
+.prose-article a:hover {
+  text-decoration-color: var(--azure);
+}
+.prose-article strong {
+  font-weight: 700;
+  color: var(--ink);
+}
+.prose-article ul,
+.prose-article ol {
+  padding-left: 1.5rem;
+}
+.prose-article ul {
+  list-style: none;
+}
+.prose-article ul > li {
+  position: relative;
+}
+.prose-article ul > li::before {
+  content: "";
+  position: absolute;
+  left: -1.1rem;
+  top: 0.72em;
+  width: 0.4rem;
+  height: 0.4rem;
+  border-radius: 9999px;
+  background-color: var(--brass);
+}
+.prose-article ol {
+  list-style: decimal;
+}
+.prose-article ol > li::marker {
+  color: var(--brass);
+  font-family: var(--font-sans);
+  font-weight: 600;
+}
+.prose-article li + li {
+  margin-top: 0.5em;
+}
+.prose-article li > ul,
+.prose-article li > ol {
+  margin-top: 0.5em;
+}
+.prose-article blockquote {
+  border-left: 3px solid var(--brass);
+  padding: 0.2rem 0 0.2rem 1.25rem;
+  margin-left: 0;
+  font-style: italic;
+  color: var(--muted);
+}
+.prose-article blockquote p {
+  margin: 0;
+}
+.prose-article code {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.86em;
+  background-color: color-mix(in srgb, var(--techelet) 9%, transparent);
+  color: var(--techelet);
+  padding: 0.12em 0.4em;
+  border-radius: 4px;
+}
+.dark .prose-article code {
+  color: var(--ink);
+}
+.prose-article pre {
+  background-color: var(--ink);
+  color: var(--paper);
+  padding: 1.1rem 1.25rem;
+  border-radius: var(--radius-card);
+  overflow-x: auto;
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+.prose-article pre code {
+  background: none;
+  color: inherit;
+  padding: 0;
+  font-size: inherit;
+}
+.prose-article hr {
+  border: none;
+  border-top: 1px solid var(--hairline);
+  margin: 2.4rem 0;
+}
+.prose-article img {
+  border-radius: var(--radius-card);
+  border: 1px solid var(--hairline);
+  max-width: 100%;
+  height: auto;
+}
+.prose-article table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-sans);
+  font-size: 0.95rem;
+}
+.prose-article th,
+.prose-article td {
+  text-align: left;
+  padding: 0.6rem 0.85rem;
+  border-bottom: 1px solid var(--hairline);
+}
+.prose-article thead th {
+  border-bottom: 2px solid var(--hairline-strong);
+  font-weight: 700;
+}
+.prose-article tbody tr:hover {
+  background-color: color-mix(in srgb, var(--brass) 6%, transparent);
+}
+
+/* Signature: illuminated drop cap on the first paragraph */
+.prose-article.has-dropcap > p:first-of-type::first-letter {
+  font-family: var(--font-display);
+  font-weight: 900;
+  float: left;
+  font-size: 3.6rem;
+  line-height: 0.78;
+  padding: 0.18rem 0.6rem 0 0;
+  margin-top: 0.18rem;
+  color: var(--brass);
 }

@@ -11,51 +11,77 @@ export default function ArticleForm() {
   const removeRef = (i: number) => setRefs(refs.filter((_, idx) => idx !== i));
 
   return (
-    <form action={createArticle} style={{ display: "grid", gap: "1rem", maxWidth: 700 }}>
-      <label>
-        Title
-        <input name="title" required style={{ display: "block", width: "100%", padding: "0.5rem" }} />
-      </label>
+    <form action={createArticle} className="flex flex-col gap-6">
+      <div>
+        <label htmlFor="title" className="field-label">Title</label>
+        <input id="title" name="title" required className="input" />
+      </div>
 
-      <label>
-        Summary
-        <textarea name="summary" rows={2} style={{ display: "block", width: "100%", padding: "0.5rem" }} />
-      </label>
+      <div>
+        <label htmlFor="summary" className="field-label">
+          Summary <span className="field-hint">(the lede shown under the title)</span>
+        </label>
+        <textarea id="summary" name="summary" rows={2} className="textarea" />
+      </div>
 
-      <label>
-        Body (markdown)
-        <textarea name="body" rows={14} required style={{ display: "block", width: "100%", padding: "0.5rem", fontFamily: "monospace" }} />
-      </label>
+      <div>
+        <label htmlFor="body" className="field-label">
+          Body <span className="field-hint">(Markdown — headings, lists, links, tables)</span>
+        </label>
+        <textarea
+          id="body"
+          name="body"
+          rows={16}
+          required
+          className="textarea font-mono text-sm"
+        />
+      </div>
 
-      <label>
-        Status
-        <select name="status" style={{ display: "block", padding: "0.5rem" }}>
+      <div>
+        <label htmlFor="status" className="field-label">Status</label>
+        <select id="status" name="status" className="select max-w-xs">
           <option value="draft">Draft</option>
           <option value="review">Review</option>
           <option value="published">Published</option>
         </select>
-      </label>
+      </div>
 
-      <fieldset style={{ border: "1px solid #ccc", padding: "1rem" }}>
-        <legend>References</legend>
-        {refs.map((ref, i) => (
-          <div key={i} style={{ display: "grid", gap: "0.5rem", marginBottom: "1rem", paddingBottom: "1rem", borderBottom: "1px solid #eee" }}>
-            <input name="ref_title" placeholder="Reference title" defaultValue={ref.title} style={{ padding: "0.4rem" }} />
-            <input name="ref_url" placeholder="https://..." defaultValue={ref.url} style={{ padding: "0.4rem" }} />
-            <input name="ref_source" placeholder="Source / publisher" defaultValue={ref.source} style={{ padding: "0.4rem" }} />
-            {refs.length > 1 && (
-              <button type="button" onClick={() => removeRef(i)} style={{ justifySelf: "start" }}>
-                Remove
-              </button>
-            )}
-          </div>
-        ))}
-        <button type="button" onClick={addRef}>+ Add reference</button>
+      <fieldset className="card p-5">
+        <legend className="px-2 font-display text-lg font-bold text-ink">References</legend>
+        <p className="mb-4 text-sm text-muted">
+          Add the sources that back this article. Each needs at least a title or URL.
+        </p>
+        <div className="flex flex-col gap-4">
+          {refs.map((ref, i) => (
+            <div key={i} className="rounded-lg border border-hairline bg-paper/50 p-4">
+              <div className="mb-3 flex items-center justify-between">
+                <span className="eyebrow">Source {i + 1}</span>
+                {refs.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => removeRef(i)}
+                    className="text-sm font-medium text-[#b3261e] hover:opacity-75"
+                  >
+                    Remove
+                  </button>
+                )}
+              </div>
+              <div className="flex flex-col gap-2">
+                <input name="ref_title" placeholder="Reference title" defaultValue={ref.title} className="input" />
+                <input name="ref_url" placeholder="https://…" defaultValue={ref.url} className="input" />
+                <input name="ref_source" placeholder="Source / publisher" defaultValue={ref.source} className="input" />
+              </div>
+            </div>
+          ))}
+        </div>
+        <button type="button" onClick={addRef} className="btn btn-secondary mt-4">
+          + Add reference
+        </button>
       </fieldset>
 
-      <button type="submit" style={{ padding: "0.6rem 1.2rem", fontWeight: "bold" }}>
-        Create article
-      </button>
+      <div>
+        <button type="submit" className="btn btn-primary">Create article</button>
+      </div>
     </form>
   );
 }

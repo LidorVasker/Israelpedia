@@ -5,6 +5,7 @@ import { db } from "@/db";
 import { articles, articleReferences, articleRevisions, suggestions } from "@/db/schema";
 import { requireAdmin } from "@/lib/auth-guard";
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { eq } from "drizzle-orm";
 
 // turn "History of Jerusalem" into "history-of-jerusalem"
@@ -88,7 +89,6 @@ export async function updateArticle(formData: FormData) {
   const userId = (session.user as any).id as string;
 
   const articleId   = formData.get("articleId") as string;
-  const articleSlug = formData.get("articleSlug") as string;
   const title       = (formData.get("title") as string)?.trim();
   const summary     = (formData.get("summary") as string)?.trim() || null;
   const body        = (formData.get("body") as string)?.trim();
@@ -142,7 +142,32 @@ export async function updateArticle(formData: FormData) {
     }
   });
 
-  redirect(`/article/${articleSlug}`);
+  redirect("/admin");
+}
+
+// Quick status change from the admin article list (no revision snapshot).
+export async function setArticleStatus(formData: FormData) {
+  await requireAdmin();
+
+  const articleId = formData.get("articleId") as string;
+  const status = formData.get("status") as string;
+  const valid = ["draft", "review", "published", "archived"];
+  if (!articleId || !valid.includes(status)) return;
+
+  const [current] = await db.select().from(articles).where(eq(articles.id, articleId));
+  if (!current) throw new Error("Article not found.");
+
+  await db
+    .update(articles)
+    .set({
+      status: status as any,
+      updatedAt: new Date(),
+      publishedAt:
+        status === "published" && !current.publishedAt ? new Date() : current.publishedAt,
+    })
+    .where(eq(articles.id, articleId));
+
+  revalidatePath("/admin");
 }
 
 export async function acceptSuggestion(suggestionId: string, _formData: FormData) {
