@@ -1,0 +1,5 @@
+{
+  "ignoreCommand": "git diff --quiet HEAD^ HEAD -- worker/",
+  "buildCommand": "next build",
+  "outputDirectory": ".next"
+}
