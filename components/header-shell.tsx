@@ -1,10 +1,50 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { Suspense, useState, type ReactNode } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import Wordmark from "./wordmark";
 import ThemeToggle from "./theme-toggle";
+
+const SearchIcon = () => (
+  <svg
+    className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-faint"
+    width="17" height="17" viewBox="0 0 24 24" fill="none"
+    stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"
+  >
+    <circle cx="11" cy="11" r="7" />
+    <path d="m20 20-3.5-3.5" />
+  </svg>
+);
+
+// Inner component reads useSearchParams — must be wrapped in Suspense
+function SearchFieldInner({
+  className = "",
+  autoFocus = false,
+}: {
+  className?: string;
+  autoFocus?: boolean;
+}) {
+  const pathname = usePathname();
+  const params = useSearchParams();
+  const currentQuery = pathname === "/search" ? (params.get("q") ?? "") : "";
+
+  return (
+    <form action="/search" method="get" role="search" className={`relative ${className}`}>
+      <SearchIcon />
+      <input
+        key={currentQuery}
+        type="search"
+        name="q"
+        defaultValue={currentQuery}
+        autoFocus={autoFocus}
+        placeholder="Search IsraelPedia"
+        aria-label="Search articles"
+        className="input !pl-9"
+      />
+    </form>
+  );
+}
 
 function SearchField({
   className = "",
@@ -13,25 +53,24 @@ function SearchField({
   className?: string;
   autoFocus?: boolean;
 }) {
+  // Suspense required because SearchFieldInner calls useSearchParams
   return (
-    <form action="/" method="get" role="search" className={`relative ${className}`}>
-      <svg
-        className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-faint"
-        width="17" height="17" viewBox="0 0 24 24" fill="none"
-        stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"
-      >
-        <circle cx="11" cy="11" r="7" />
-        <path d="m20 20-3.5-3.5" />
-      </svg>
-      <input
-        type="search"
-        name="q"
-        autoFocus={autoFocus}
-        placeholder="Search IsraelPedia"
-        aria-label="Search articles"
-        className="input !pl-9"
-      />
-    </form>
+    <Suspense
+      fallback={
+        <form action="/search" method="get" role="search" className={`relative ${className}`}>
+          <SearchIcon />
+          <input
+            type="search"
+            name="q"
+            placeholder="Search IsraelPedia"
+            aria-label="Search articles"
+            className="input !pl-9"
+          />
+        </form>
+      }
+    >
+      <SearchFieldInner className={className} autoFocus={autoFocus} />
+    </Suspense>
   );
 }
 

@@ -1,6 +1,6 @@
 import { db } from "@/db";
 import { articles } from "@/db/schema";
-import { and, eq, ilike, or, desc } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 import Link from "next/link";
 
 const TOPICS = [
@@ -13,25 +13,11 @@ const TOPICS = [
   "Communities",
 ];
 
-export default async function Home({
-  searchParams,
-}: {
-  searchParams: Promise<{ q?: string }>;
-}) {
-  const { q } = await searchParams;
-  const query = q?.trim();
-
-  const whereClause = query
-    ? and(
-        eq(articles.status, "published"),
-        or(ilike(articles.title, `%${query}%`), ilike(articles.summary, `%${query}%`))
-      )
-    : eq(articles.status, "published");
-
+export default async function Home() {
   const published = await db
     .select({ id: articles.id, slug: articles.slug, title: articles.title, summary: articles.summary })
     .from(articles)
-    .where(whereClause)
+    .where(eq(articles.status, "published"))
     .orderBy(desc(articles.publishedAt));
 
   return (
@@ -54,7 +40,7 @@ export default async function Home({
           </p>
 
           {/* Search — the centerpiece */}
-          <form action="/" method="get" role="search" className="mx-auto mt-9 max-w-xl">
+          <form action="/search" method="get" role="search" className="mx-auto mt-9 max-w-xl">
             <div className="relative">
               <svg
                 className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-faint"
@@ -67,7 +53,6 @@ export default async function Home({
               <input
                 type="search"
                 name="q"
-                defaultValue={query ?? ""}
                 placeholder="Search articles, people, places…"
                 aria-label="Search articles"
                 className="w-full rounded-xl border border-hairline-strong bg-card py-4 pl-12 pr-28 text-base text-ink shadow-sm transition-shadow focus:outline-none focus:ring-2 focus:ring-azure"
@@ -81,10 +66,10 @@ export default async function Home({
             </div>
           </form>
 
-          {/* Topic chips — live searches across the real subject areas */}
+          {/* Topic chips */}
           <div className="mt-6 flex flex-wrap justify-center gap-2">
             {TOPICS.map((t) => (
-              <Link key={t} href={`/?q=${encodeURIComponent(t)}`} className="chip">
+              <Link key={t} href={`/search?q=${encodeURIComponent(t)}`} className="chip">
                 {t}
               </Link>
             ))}
@@ -96,22 +81,11 @@ export default async function Home({
       <section className="mx-auto max-w-5xl px-4 py-14 sm:px-6">
         <div className="mb-7 flex items-end justify-between gap-4 border-b border-hairline pb-4">
           <div>
-            <span className="eyebrow">
-              {query ? "Search results" : "From the library"}
-            </span>
+            <span className="eyebrow">From the library</span>
             <h2 className="mt-1.5 font-display text-2xl font-bold text-ink">
-              {query ? (
-                <>Results for “{query}”</>
-              ) : (
-                <>Recently published</>
-              )}
+              Recently published
             </h2>
           </div>
-          {query && (
-            <Link href="/" className="btn btn-ghost shrink-0">
-              Clear search
-            </Link>
-          )}
         </div>
 
         {published.length > 0 ? (
@@ -140,22 +114,10 @@ export default async function Home({
           </ul>
         ) : (
           <div className="rounded-xl border border-dashed border-hairline-strong bg-card/50 px-6 py-16 text-center">
-            {query ? (
-              <>
-                <p className="font-display text-xl text-ink">No articles match “{query}”.</p>
-                <p className="mt-2 text-muted">
-                  Try a different term, or{" "}
-                  <Link href="/suggest" className="link">suggest this topic</Link> for our editors.
-                </p>
-              </>
-            ) : (
-              <>
-                <p className="font-display text-xl text-ink">The library is just getting started.</p>
-                <p className="mt-2 text-muted">
-                  No articles have been published yet — check back soon.
-                </p>
-              </>
-            )}
+            <p className="font-display text-xl text-ink">The library is just getting started.</p>
+            <p className="mt-2 text-muted">
+              No articles have been published yet — check back soon.
+            </p>
           </div>
         )}
       </section>

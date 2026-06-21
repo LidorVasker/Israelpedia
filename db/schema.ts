@@ -1,5 +1,6 @@
 // db/schema.ts
 import { pgTable, uuid, text, timestamp, pgEnum, integer, index } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 
 export const userRole = pgEnum("user_role", ["reader", "contributor", "admin"]);
 export const articleStatus = pgEnum("article_status", ["draft", "review", "published", "archived"]);
@@ -13,6 +14,7 @@ export const users = pgTable("users", {
   emailVerified: timestamp("email_verified", { mode: "date" }),
   image: text("image"),
   role: userRole("role").notNull().default("reader"),
+  hashedPassword: text("hashed_password"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
@@ -32,6 +34,8 @@ export const articles = pgTable("articles", {
   publishedAt: timestamp("published_at"),
 }, (t) => ({
   statusIdx: index("articles_status_idx").on(t.status),
+  ftsIdx: index("articles_fts_idx")
+    .using("gin", sql`to_tsvector('english', ${t.title} || ' ' || coalesce(${t.body}, ''))`),
 }));
 
 export const articleRevisions = pgTable("article_revisions", {
@@ -65,6 +69,14 @@ export const articleReferences = pgTable("article_references", {
   accessedAt: timestamp("accessed_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
+export const passwordResetTokens = pgTable("password_reset_tokens", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  token: text("token").notNull().unique(),
+  expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
 // --- Auth.js tables ---
 import { primaryKey } from "drizzle-orm/pg-core";
 import type { AdapterAccountType } from "next-auth/adapters";
