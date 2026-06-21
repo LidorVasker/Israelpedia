@@ -4,8 +4,8 @@ import Anthropic from "@anthropic-ai/sdk";
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-export async function runDiscovery(): Promise<void> {
-  console.log("[Discovery] Starting...");
+export async function runDiscoveryBasic(): Promise<void> {
+  console.log("[DiscoveryBasic] Starting...");
 
   const existingArticles    = await db.select({ title: articles.title }).from(articles);
   const existingSuggestions = await db.select({ topic: suggestions.topic }).from(suggestions);
@@ -17,13 +17,21 @@ export async function runDiscovery(): Promise<void> {
 
   const prompt = `You are a topic discovery agent for IsraelPedia — an online encyclopedia focused on Israel and Jewish history, culture, religion, language, science, notable people, and communities worldwide.
 
-Suggest 5 new article topics that would make valuable additions to this encyclopedia. Each topic should be notable and factual with enough depth to support a full encyclopedia article.
+Your job is to propose 8 foundational, everyday topics that a general audience would commonly search for. Focus on these categories:
+
+- Israeli cities and regions (e.g. Tel Aviv, Haifa, Eilat, Negev Desert, Galilee)
+- Israeli food and cuisine (e.g. Falafel, Hummus, Shakshuka, Israeli breakfast)
+- Israeli inventions and technology (e.g. Drip irrigation, Iron Dome, USB flash drive, Waze)
+- Israeli government and institutions (e.g. Knesset, Israel Defense Forces, Mossad, Bank of Israel)
+- Jewish holidays and traditions (e.g. Passover, Hanukkah, Rosh Hashanah, Shabbat, Bar Mitzvah)
+- Notable Israeli and Jewish figures (e.g. David Ben-Gurion, Golda Meir, Theodor Herzl, Albert Einstein)
+- Israeli nature and geography (e.g. Dead Sea, Sea of Galilee, Jordan River, Mount Hermon)
+- Israeli sports (e.g. Maccabi Tel Aviv, Israeli national football team)
 
 CRITICAL — Title format rules:
 - Titles must be SHORT and CLEAN: 1 to 4 words in most cases.
-- Think like Wikipedia: "Dead Sea Scrolls", "Yitzhak Rabin", "Kibbutz Movement", "Israeli Air Force".
-- NEVER use colons, subtitles, or long descriptive phrases.
-- NEVER write titles like "The Nakba and Palestinian Displacement (1948): Military Strategy and Aftermath" — that is wrong.
+- Think like Wikipedia: "Dead Sea", "Passover", "Iron Dome", "Golda Meir".
+- NEVER use colons, subtitles, or long descriptive phrases in the title.
 - The title should be the name of the thing, person, place, event, or concept — nothing more.
 
 Existing topics to AVOID (do not suggest these or close variants):
@@ -44,9 +52,9 @@ Respond ONLY in this JSON format — no markdown, no explanation:
     const text = (message.content[0] as any).text as string;
     const clean = text.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "").trim();
     proposals = JSON.parse(clean);
-    console.log(`[Discovery] Claude proposed ${proposals.length} topics`);
+    console.log(`[DiscoveryBasic] Claude proposed ${proposals.length} topics`);
   } catch (err) {
-    console.error("[Discovery] Anthropic call or JSON parse failed:", err);
+    console.error("[DiscoveryBasic] Anthropic call or JSON parse failed:", err);
     return;
   }
 
@@ -60,7 +68,7 @@ Respond ONLY in this JSON format — no markdown, no explanation:
       (t) => t === topicLower || t.includes(topicLower) || topicLower.includes(t)
     );
     if (isDuplicate) {
-      console.log(`[Discovery] Skip duplicate: "${p.topic}"`);
+      console.log(`[DiscoveryBasic] Skip duplicate: "${p.topic}"`);
       continue;
     }
     await db.insert(suggestions).values({
@@ -70,8 +78,8 @@ Respond ONLY in this JSON format — no markdown, no explanation:
       status: "pending",
     });
     inserted++;
-    console.log(`[Discovery] Inserted: "${p.topic}"`);
+    console.log(`[DiscoveryBasic] Inserted: "${p.topic}"`);
   }
 
-  console.log(`[Discovery] Done — inserted ${inserted} new suggestions.`);
+  console.log(`[DiscoveryBasic] Done — inserted ${inserted} new suggestions.`);
 }
