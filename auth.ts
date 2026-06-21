@@ -15,6 +15,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     sessionsTable: sessions,
     verificationTokensTable: verificationTokens,
   }),
+  // Credentials provider requires JWT sessions — database sessions are not supported for credentials auth.
+  // The adapter still manages users and OAuth accounts in the DB; only the session itself is a JWT cookie.
+  session: { strategy: "jwt" },
   providers: [
     Google({ allowDangerousEmailAccountLinking: true }),
     Credentials({
@@ -37,10 +40,22 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     signIn: "/signin",
   },
   callbacks: {
-    async session({ session, user }) {
-      if (session.user) {
-        session.user.id = user.id;
-        (session.user as any).role = (user as any).role;
+    async jwt({ token, user }) {
+      if (user?.id) {
+        // Persist id and role into the token on first sign-in
+        token.id = user.id;
+        const [dbUser] = await db
+          .select({ role: users.role })
+          .from(users)
+          .where(eq(users.id, user.id));
+        token.role = dbUser?.role ?? "reader";
+      }
+      return token;
+    },
+    async session({ session, token }) {
+      if (session.user && token) {
+        session.user.id = token.id as string;
+        (session.user as any).role = token.role;
       }
       return session;
     },
