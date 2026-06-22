@@ -4,6 +4,21 @@ import Anthropic from "@anthropic-ai/sdk";
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
+function extractJson(text: string): string {
+  const stripped = text.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "").trim();
+  if (stripped.startsWith("{") || stripped.startsWith("[")) return stripped;
+  const firstBrace = text.indexOf("{");
+  const firstBracket = text.indexOf("[");
+  const start =
+    firstBrace >= 0 && (firstBracket < 0 || firstBrace < firstBracket)
+      ? firstBrace
+      : firstBracket;
+  if (start < 0) return stripped;
+  const endChar = text[start] === "{" ? "}" : "]";
+  const end = text.lastIndexOf(endChar);
+  return end > start ? text.slice(start, end + 1) : stripped;
+}
+
 export async function runDiscoveryBasic(): Promise<void> {
   console.log("[DiscoveryBasic] Starting...");
 
@@ -50,8 +65,7 @@ Respond ONLY in this JSON format — no markdown, no explanation:
       messages: [{ role: "user", content: prompt }],
     });
     const text = (message.content[0] as any).text as string;
-    const clean = text.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "").trim();
-    proposals = JSON.parse(clean);
+    proposals = JSON.parse(extractJson(text));
     console.log(`[DiscoveryBasic] Claude proposed ${proposals.length} topics`);
   } catch (err) {
     console.error("[DiscoveryBasic] Anthropic call or JSON parse failed:", err);
@@ -63,10 +77,9 @@ Respond ONLY in this JSON format — no markdown, no explanation:
 
   for (const p of proposals) {
     if (!p.topic?.trim() || !p.rationale?.trim()) continue;
-    const topicLower = p.topic.toLowerCase();
-    const isDuplicate = existingLower.some(
-      (t) => t === topicLower || t.includes(topicLower) || topicLower.includes(t)
-    );
+    const topicLower = p.topic.toLowerCase().trim();
+    // Exact match only — substring matching against long titles blocks valid new topics
+    const isDuplicate = existingLower.some((t) => t === topicLower);
     if (isDuplicate) {
       console.log(`[DiscoveryBasic] Skip duplicate: "${p.topic}"`);
       continue;

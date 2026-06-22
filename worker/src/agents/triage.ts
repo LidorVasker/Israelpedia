@@ -5,6 +5,21 @@ import Anthropic from "@anthropic-ai/sdk";
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
+function extractJson(text: string): string {
+  const stripped = text.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "").trim();
+  if (stripped.startsWith("{") || stripped.startsWith("[")) return stripped;
+  const firstBrace = text.indexOf("{");
+  const firstBracket = text.indexOf("[");
+  const start =
+    firstBrace >= 0 && (firstBracket < 0 || firstBrace < firstBracket)
+      ? firstBrace
+      : firstBracket;
+  if (start < 0) return stripped;
+  const endChar = text[start] === "{" ? "}" : "]";
+  const end = text.lastIndexOf(endChar);
+  return end > start ? text.slice(start, end + 1) : stripped;
+}
+
 function slugify(title: string): string {
   return title
     .toLowerCase()
