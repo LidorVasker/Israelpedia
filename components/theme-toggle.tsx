@@ -13,11 +13,12 @@ export default function ThemeToggle() {
 
   function toggle() {
     const next = !dark;
+    const root = document.documentElement;
+    root.classList.add("theme-transitioning");
     setDark(next);
-    document.documentElement.classList.toggle("dark", next);
-    try {
-      localStorage.setItem("ip-theme", next ? "dark" : "light");
-    } catch {}
+    root.classList.toggle("dark", next);
+    try { localStorage.setItem("ip-theme", next ? "dark" : "light"); } catch {}
+    window.setTimeout(() => root.classList.remove("theme-transitioning"), 300);
   }
 
   return (

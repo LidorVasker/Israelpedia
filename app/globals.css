@@ -89,6 +89,15 @@
     outline-offset: 2px;
     border-radius: 3px;
   }
+  /* Smooth theme transitions — only active for ~300ms while toggling */
+  .theme-transitioning *,
+  .theme-transitioning *::before,
+  .theme-transitioning *::after {
+    transition-property: background-color, color, border-color, box-shadow, outline-color, fill, stroke !important;
+    transition-duration: 0.25s !important;
+    transition-timing-function: ease !important;
+  }
+
   /* Respect reduced motion */
   @media (prefers-reduced-motion: reduce) {
     *,
