@@ -1,3 +1,4 @@
+import { cookies } from "next/headers";
 import { searchArticles } from "@/lib/search";
 import Link from "next/link";
 import type { Metadata } from "next";
@@ -8,9 +9,7 @@ export async function generateMetadata({
   searchParams: Promise<{ q?: string }>;
 }): Promise<Metadata> {
   const { q } = await searchParams;
-  return {
-    title: q ? `Search: ${q}` : "Search",
-  };
+  return { title: q ? `Search: ${q}` : "Search" };
 }
 
 export default async function SearchPage({
@@ -18,10 +17,13 @@ export default async function SearchPage({
 }: {
   searchParams: Promise<{ q?: string }>;
 }) {
-  const { q } = await searchParams;
+  const [{ q }, cookieStore] = await Promise.all([searchParams, cookies()]);
   const query = q?.trim() ?? "";
   const results = query ? await searchArticles(query) : [];
   const count = results.length;
+
+  // Show Hebrew titles/links only for readers who've switched to Hebrew mode.
+  const heMode = cookieStore.get("ip-lang")?.value === "he";
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-14 sm:px-6">
@@ -47,27 +49,42 @@ export default async function SearchPage({
 
       {results.length > 0 ? (
         <ul className="grid gap-4 sm:grid-cols-2">
-          {results.map((a) => (
-            <li key={a.id}>
-              <Link
-                href={`/article/${a.slug}`}
-                className="group flex h-full flex-col rounded-xl border border-hairline bg-card p-6 transition-all hover:border-techelet hover:shadow-[0_2px_20px_-8px_rgba(27,59,107,0.25)]"
-              >
-                <h2 className="font-display text-xl font-bold leading-snug text-ink transition-colors group-hover:text-techelet">
-                  {a.title}
-                </h2>
-                {a.summary && (
-                  <p className="mt-2 line-clamp-3 flex-1 text-[0.95rem] leading-relaxed text-muted">
-                    {a.summary}
-                  </p>
-                )}
-                <span className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-azure">
-                  Read article
-                  <span aria-hidden="true" className="transition-transform group-hover:translate-x-0.5">→</span>
-                </span>
-              </Link>
-            </li>
-          ))}
+          {results.map((a) => {
+            // In Hebrew mode, prefer Hebrew content when available.
+            const useHebrew = heMode && a.hasHebrew;
+            const href = useHebrew ? `/he/article/${a.slug}` : `/article/${a.slug}`;
+            const displayTitle = useHebrew ? (a.titleHe ?? a.title) : a.title;
+            const displaySummary = useHebrew ? (a.summaryHe ?? a.summary) : a.summary;
+
+            return (
+              <li key={a.id}>
+                <Link
+                  href={href}
+                  className="group flex h-full flex-col rounded-xl border border-hairline bg-card p-6 transition-all hover:border-techelet hover:shadow-[0_2px_20px_-8px_rgba(27,59,107,0.25)]"
+                  dir={useHebrew ? "rtl" : undefined}
+                  lang={useHebrew ? "he" : undefined}
+                >
+                  <h2 className="font-display text-xl font-bold leading-snug text-ink transition-colors group-hover:text-techelet">
+                    {displayTitle}
+                  </h2>
+                  {displaySummary && (
+                    <p className="mt-2 line-clamp-3 flex-1 text-[0.95rem] leading-relaxed text-muted">
+                      {displaySummary}
+                    </p>
+                  )}
+                  <span className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-azure">
+                    {useHebrew ? "קריאת המאמר" : "Read article"}
+                    <span
+                      aria-hidden="true"
+                      className={`transition-transform ${useHebrew ? "group-hover:-translate-x-0.5" : "group-hover:translate-x-0.5"}`}
+                    >
+                      {useHebrew ? "←" : "→"}
+                    </span>
+                  </span>
+                </Link>
+              </li>
+            );
+          })}
         </ul>
       ) : query ? (
         <div className="rounded-xl border border-dashed border-hairline-strong bg-card/50 px-6 py-16 text-center">

@@ -8,14 +8,18 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { eq } from "drizzle-orm";
 
-// turn "History of Jerusalem" into "history-of-jerusalem"
 function slugify(title: string) {
   return title
     .toLowerCase()
     .trim()
-    .replace(/[^\w\s-]/g, "")   // drop punctuation
-    .replace(/\s+/g, "-")        // spaces → dashes
-    .replace(/-+/g, "-");        // collapse repeats
+    .replace(/[^\w\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-");
+}
+
+function nullIfEmpty(s: string | null | undefined): string | null {
+  const v = s?.trim();
+  return v ? v : null;
 }
 
 export async function createArticle(formData: FormData) {
@@ -23,19 +27,20 @@ export async function createArticle(formData: FormData) {
   const userId = (session.user as any).id as string;
 
   const title = (formData.get("title") as string)?.trim();
-  const summary = (formData.get("summary") as string)?.trim() || null;
+  const summary = nullIfEmpty(formData.get("summary") as string);
   const body = (formData.get("body") as string)?.trim();
   const status = (formData.get("status") as string) || "draft";
 
-  if (!title || !body) {
-    throw new Error("Title and body are required.");
-  }
+  const titleHe = nullIfEmpty(formData.get("titleHe") as string);
+  const summaryHe = nullIfEmpty(formData.get("summaryHe") as string);
+  const bodyHe = nullIfEmpty(formData.get("bodyHe") as string);
+
+  if (!title || !body) throw new Error("Title and body are required.");
 
   const slug = slugify(title);
 
-  // references come in as parallel arrays from the form
-  const refUrls = formData.getAll("ref_url") as string[];
-  const refTitles = formData.getAll("ref_title") as string[];
+  const refUrls    = formData.getAll("ref_url")    as string[];
+  const refTitles  = formData.getAll("ref_title")  as string[];
   const refSources = formData.getAll("ref_source") as string[];
 
   const newArticleId = await db.transaction(async (tx) => {
@@ -46,6 +51,9 @@ export async function createArticle(formData: FormData) {
         title,
         summary,
         body,
+        titleHe,
+        summaryHe,
+        bodyHe,
         status: status as any,
         origin: "human",
         createdBy: userId,
@@ -53,21 +61,22 @@ export async function createArticle(formData: FormData) {
       })
       .returning({ id: articles.id });
 
-    // first revision snapshot
     await tx.insert(articleRevisions).values({
       articleId: article.id,
       title,
       summary,
       body,
+      titleHe,
+      summaryHe,
+      bodyHe,
       editedBy: userId,
       editorNote: "Initial creation",
     });
 
-    // insert any references that have at least a URL or title
     for (let i = 0; i < refUrls.length; i++) {
-      const url = refUrls[i]?.trim();
+      const url      = refUrls[i]?.trim();
       const refTitle = refTitles[i]?.trim();
-      const source = refSources[i]?.trim();
+      const source   = refSources[i]?.trim();
       if (url || refTitle) {
         await tx.insert(articleReferences).values({
           articleId: article.id,
@@ -88,12 +97,16 @@ export async function updateArticle(formData: FormData) {
   const session = await requireAdmin();
   const userId = (session.user as any).id as string;
 
-  const articleId   = formData.get("articleId") as string;
-  const title       = (formData.get("title") as string)?.trim();
-  const summary     = (formData.get("summary") as string)?.trim() || null;
-  const body        = (formData.get("body") as string)?.trim();
-  const status      = (formData.get("status") as string) || "draft";
-  const editorNote  = (formData.get("editorNote") as string)?.trim() || null;
+  const articleId  = formData.get("articleId") as string;
+  const title      = (formData.get("title") as string)?.trim();
+  const summary    = nullIfEmpty(formData.get("summary") as string);
+  const body       = (formData.get("body") as string)?.trim();
+  const status     = (formData.get("status") as string) || "draft";
+  const editorNote = nullIfEmpty(formData.get("editorNote") as string);
+
+  const titleHe   = nullIfEmpty(formData.get("titleHe") as string);
+  const summaryHe = nullIfEmpty(formData.get("summaryHe") as string);
+  const bodyHe    = nullIfEmpty(formData.get("bodyHe") as string);
 
   if (!title || !body) throw new Error("Title and body are required.");
 
@@ -105,12 +118,16 @@ export async function updateArticle(formData: FormData) {
     const [current] = await tx.select().from(articles).where(eq(articles.id, articleId));
     if (!current) throw new Error("Article not found.");
 
+    // Snapshot the state BEFORE this edit (for the revision history).
     await tx.insert(articleRevisions).values({
       articleId,
-      title: current.title,
-      summary: current.summary,
-      body: current.body,
-      editedBy: userId,
+      title:     current.title,
+      summary:   current.summary,
+      body:      current.body,
+      titleHe:   current.titleHe,
+      summaryHe: current.summaryHe,
+      bodyHe:    current.bodyHe,
+      editedBy:  userId,
       editorNote,
     });
 
@@ -119,9 +136,13 @@ export async function updateArticle(formData: FormData) {
         title,
         summary,
         body,
+        titleHe,
+        summaryHe,
+        bodyHe,
         status: status as any,
         updatedAt: new Date(),
-        publishedAt: status === "published" && !current.publishedAt ? new Date() : current.publishedAt,
+        publishedAt:
+          status === "published" && !current.publishedAt ? new Date() : current.publishedAt,
       })
       .where(eq(articles.id, articleId));
 
@@ -145,7 +166,6 @@ export async function updateArticle(formData: FormData) {
   redirect("/admin");
 }
 
-// Quick status change from the admin article list (no revision snapshot).
 export async function setArticleStatus(formData: FormData) {
   await requireAdmin();
 

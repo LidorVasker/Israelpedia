@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import Wordmark from "./wordmark";
 import ThemeToggle from "./theme-toggle";
+import LangToggle from "./lang-toggle";
 
 const SearchIcon = () => (
   <svg
@@ -53,7 +54,6 @@ function SearchField({
   className?: string;
   autoFocus?: boolean;
 }) {
-  // Suspense required because SearchFieldInner calls useSearchParams
   return (
     <Suspense
       fallback={
@@ -76,26 +76,28 @@ function SearchField({
 
 export default function HeaderShell({
   isAdmin,
+  homePath = "/",
   authSlot,
   suggestDesktop,
   suggestMobile,
 }: {
   isAdmin: boolean;
+  homePath?: string;
   authSlot: ReactNode;
   suggestDesktop: ReactNode;
   suggestMobile: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
-  const isHome = pathname === "/";
+  const isHome = pathname === "/" || pathname === "/he";
 
   return (
     <header className="sticky top-0 z-40 border-b border-hairline bg-paper/85 backdrop-blur supports-[backdrop-filter]:bg-paper/70">
       <div className="rule-brass" />
       <div className="mx-auto flex h-16 max-w-7xl items-center gap-4 px-4 sm:px-6">
-        <Wordmark />
+        <Wordmark href={homePath} />
 
-        {/* Desktop search — hidden on the homepage (it has its own hero search) */}
+        {/* Desktop search — hidden on homepages */}
         {!isHome && (
           <div className="hidden flex-1 justify-center md:flex">
             <SearchField className="w-full max-w-md" />
@@ -112,6 +114,7 @@ export default function HeaderShell({
             </Link>
           )}
           <span className="mx-1 h-5 w-px bg-hairline" aria-hidden="true" />
+          <LangToggle />
           <ThemeToggle />
           <div className="ml-1">{authSlot}</div>
         </nav>
@@ -139,6 +142,10 @@ export default function HeaderShell({
       {open && (
         <div className="border-t border-hairline bg-paper px-4 pb-5 pt-4 md:hidden">
           <SearchField className="mb-4 w-full" />
+          <div className="mb-3 flex items-center justify-between border-b border-hairline pb-3">
+            <span className="text-sm font-medium text-muted">Language</span>
+            <LangToggle />
+          </div>
           <nav className="flex flex-col gap-1" onClick={() => setOpen(false)}>
             {suggestMobile}
             {isAdmin && (

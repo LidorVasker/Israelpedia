@@ -6,7 +6,7 @@ import SiteFooter from "@/components/site-footer";
 
 const frankRuhl = Frank_Ruhl_Libre({
   variable: "--font-frank-ruhl",
-  subsets: ["latin"],
+  subsets: ["latin", "hebrew"],
   weight: ["500", "700", "900"],
   display: "swap",
 });

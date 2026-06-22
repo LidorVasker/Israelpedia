@@ -98,6 +98,26 @@
     transition-timing-function: ease !important;
   }
 
+  /* Suppress per-element CSS transitions during a View Transition so they don't
+     fight the page-level crossfade. The VT callback adds this class, removes it
+     via vt.finished — element color changes snap instantly inside the screenshot. */
+  .vt-in-progress *,
+  .vt-in-progress *::before,
+  .vt-in-progress *::after {
+    transition: none !important;
+    animation: none !important;
+  }
+
+  /* View Transitions for theme toggle — whole-page crossfade, 300ms */
+  @media (prefers-reduced-motion: no-preference) {
+    ::view-transition-old(root),
+    ::view-transition-new(root) {
+      animation-duration: 0.3s;
+      animation-timing-function: ease;
+      mix-blend-mode: normal;
+    }
+  }
+
   /* Respect reduced motion */
   @media (prefers-reduced-motion: reduce) {
     *,
@@ -105,6 +125,10 @@
     *::after {
       animation-duration: 0.01ms !important;
       transition-duration: 0.01ms !important;
+    }
+    ::view-transition-old(root),
+    ::view-transition-new(root) {
+      animation-duration: 0.01ms;
     }
   }
 }
@@ -392,6 +416,64 @@
 }
 .prose-article tbody tr:hover {
   background-color: color-mix(in srgb, var(--brass) 6%, transparent);
+}
+
+/* ------------------------------------------------------------------ */
+/*  RTL overrides — Hebrew pages (/he/*)                              */
+/*  Applied when a [dir="rtl"] ancestor is present (he-layout div).  */
+/* ------------------------------------------------------------------ */
+
+/* Hebrew layout uses Frank Ruhl Libre for both display and body text */
+.he-layout {
+  --font-serif: var(--font-frank-ruhl), "David", "Times New Roman", serif;
+  --font-sans: var(--font-frank-ruhl), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Lists: swap padding to the inline-end side */
+[dir="rtl"] .prose-article ul,
+[dir="rtl"] .prose-article ol {
+  padding-left: 0;
+  padding-right: 1.5rem;
+}
+
+/* Bullet dot: flip from left to right */
+[dir="rtl"] .prose-article ul > li::before {
+  left: auto;
+  right: -1.1rem;
+}
+
+/* Blockquote: border and padding flip sides */
+[dir="rtl"] .prose-article blockquote {
+  border-left: none;
+  border-right: 3px solid var(--brass);
+  padding-left: 0;
+  padding-right: 1.25rem;
+}
+
+/* Tables: flip default cell alignment */
+[dir="rtl"] .prose-article th,
+[dir="rtl"] .prose-article td {
+  text-align: right;
+}
+
+/* Brass rule: gradient goes right → left in RTL */
+[dir="rtl"] .rule-brass {
+  background: linear-gradient(
+    270deg,
+    var(--brass) 0%,
+    color-mix(in srgb, var(--brass) 35%, transparent) 60%,
+    transparent 100%
+  );
+}
+
+/* Drop cap: disable in RTL — Hebrew typography doesn't use it */
+[dir="rtl"] .prose-article.has-dropcap > p:first-of-type::first-letter {
+  float: none;
+  font-size: inherit;
+  line-height: inherit;
+  color: inherit;
+  padding: 0;
+  margin: 0;
 }
 
 /* Signature: illuminated drop cap on the first paragraph */

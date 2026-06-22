@@ -40,7 +40,8 @@ export default function SuggestForm() {
           name="topic"
           type="text"
           required
-          placeholder="e.g. Golda Meir, the Dead Sea Scrolls, Ladino"
+          dir="auto"
+          placeholder="e.g. Golda Meir, חנוכה, the Dead Sea Scrolls"
           className="input"
         />
       </div>

@@ -99,12 +99,22 @@ export default async function AdminPage({
             {allArticles.map((a) => (
               <tr key={a.id} className="border-b border-hairline last:border-0 hover:bg-paper/50">
                 <td className="px-4 py-3">
-                  <Link
-                    href={`/article/${a.slug}`}
-                    className="font-display text-base font-semibold text-ink hover:text-techelet"
-                  >
-                    {a.title}
-                  </Link>
+                  <div className="flex items-center gap-2">
+                    <Link
+                      href={`/article/${a.slug}`}
+                      className="font-display text-base font-semibold text-ink hover:text-techelet"
+                    >
+                      {a.title}
+                    </Link>
+                    <span
+                      title={a.bodyHe ? "Has Hebrew version" : "No Hebrew version yet"}
+                      className={`shrink-0 rounded px-1 py-px text-[0.65rem] font-bold tracking-wide ${
+                        a.bodyHe ? "text-brass" : "text-faint"
+                      }`}
+                    >
+                      HE
+                    </span>
+                  </div>
                 </td>
                 <td className="px-4 py-3">
                   <StatusControl articleId={a.id} status={a.status} />

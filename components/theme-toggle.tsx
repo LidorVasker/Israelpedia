@@ -13,12 +13,32 @@ export default function ThemeToggle() {
 
   function toggle() {
     const next = !dark;
-    const root = document.documentElement;
-    root.classList.add("theme-transitioning");
     setDark(next);
-    root.classList.toggle("dark", next);
-    try { localStorage.setItem("ip-theme", next ? "dark" : "light"); } catch {}
-    window.setTimeout(() => root.classList.remove("theme-transitioning"), 300);
+
+    const apply = () => {
+      const root = document.documentElement;
+      root.classList.toggle("dark", next);
+      try { localStorage.setItem("ip-theme", next ? "dark" : "light"); } catch {}
+    };
+
+    if ("startViewTransition" in document) {
+      // Disable per-element CSS transitions inside the callback so they don't
+      // fight the page-level crossfade (e.g. select transition-colors settling
+      // after the VT finishes). Re-enable once the VT is fully done.
+      const vt = (document as any).startViewTransition(() => {
+        document.documentElement.classList.add("vt-in-progress");
+        apply();
+      });
+      vt.finished.then(() => {
+        document.documentElement.classList.remove("vt-in-progress");
+      });
+    } else {
+      // Fallback for browsers without View Transitions support.
+      const root = document.documentElement;
+      root.classList.add("theme-transitioning");
+      apply();
+      window.setTimeout(() => root.classList.remove("theme-transitioning"), 350);
+    }
   }
 
   return (

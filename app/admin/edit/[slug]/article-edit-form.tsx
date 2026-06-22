@@ -12,10 +12,21 @@ type Props = {
     title: string;
     summary: string;
     body: string;
+    titleHe: string;
+    summaryHe: string;
+    bodyHe: string;
     status: string;
   };
   initialRefs: Ref[];
 };
+
+function SectionHeading({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex items-center gap-3 border-b border-hairline pb-3">
+      <h2 className="font-display text-lg font-bold text-ink">{children}</h2>
+    </div>
+  );
+}
 
 export default function ArticleEditForm({ article, initialRefs }: Props) {
   const [refs, setRefs] = useState<Ref[]>(
@@ -26,52 +37,117 @@ export default function ArticleEditForm({ article, initialRefs }: Props) {
   const removeRef = (i: number) => setRefs(refs.filter((_, idx) => idx !== i));
 
   return (
-    <form action={updateArticle} className="flex flex-col gap-6">
+    <form action={updateArticle} className="flex flex-col gap-8">
       <input type="hidden" name="articleId" value={article.id} />
       <input type="hidden" name="articleSlug" value={article.slug} />
 
-      <div>
-        <label htmlFor="title" className="field-label">Title</label>
-        <input id="title" name="title" required defaultValue={article.title} className="input" />
-      </div>
+      {/* ── English ───────────────────────────────────────────────── */}
+      <section className="flex flex-col gap-5">
+        <SectionHeading>English</SectionHeading>
 
-      <div>
-        <label htmlFor="summary" className="field-label">
-          Summary <span className="field-hint">(the lede shown under the title)</span>
-        </label>
-        <textarea id="summary" name="summary" rows={2} defaultValue={article.summary} className="textarea" />
-      </div>
+        <div>
+          <label htmlFor="title" className="field-label">Title</label>
+          <input id="title" name="title" required defaultValue={article.title} className="input" />
+        </div>
 
-      <div>
-        <label htmlFor="body" className="field-label">
-          Body <span className="field-hint">(Markdown — headings, lists, links, tables)</span>
-        </label>
-        <textarea
-          id="body"
-          name="body"
-          rows={16}
-          required
-          defaultValue={article.body}
-          className="textarea font-mono text-sm"
-        />
-      </div>
+        <div>
+          <label htmlFor="summary" className="field-label">
+            Summary <span className="field-hint">(the lede shown under the title)</span>
+          </label>
+          <textarea id="summary" name="summary" rows={2} defaultValue={article.summary} className="textarea" />
+        </div>
 
-      <div>
-        <label htmlFor="status" className="field-label">Status</label>
-        <select id="status" name="status" defaultValue={article.status} className="select max-w-xs">
-          <option value="draft">Draft</option>
-          <option value="review">Review</option>
-          <option value="published">Published</option>
-        </select>
-      </div>
+        <div>
+          <label htmlFor="body" className="field-label">
+            Body <span className="field-hint">(Markdown — headings, lists, links, tables)</span>
+          </label>
+          <textarea
+            id="body"
+            name="body"
+            rows={16}
+            required
+            defaultValue={article.body}
+            className="textarea font-mono text-sm"
+          />
+        </div>
+      </section>
 
-      <div>
-        <label htmlFor="editorNote" className="field-label">
-          Editor note <span className="field-hint">(optional — describes what changed)</span>
-        </label>
-        <textarea id="editorNote" name="editorNote" rows={2} className="textarea" />
-      </div>
+      {/* ── Hebrew (עברית) ────────────────────────────────────────── */}
+      <section className="flex flex-col gap-5">
+        <SectionHeading>
+          עברית{" "}
+          <span className="text-sm font-normal text-muted">(Hebrew — optional, edited right-to-left)</span>
+        </SectionHeading>
 
+        <div>
+          <label htmlFor="titleHe" className="field-label">כותרת (Title)</label>
+          <input
+            id="titleHe"
+            name="titleHe"
+            dir="rtl"
+            lang="he"
+            defaultValue={article.titleHe}
+            className="input"
+            placeholder="כותרת המאמר בעברית"
+          />
+        </div>
+
+        <div>
+          <label htmlFor="summaryHe" className="field-label">
+            תקציר (Summary)
+          </label>
+          <textarea
+            id="summaryHe"
+            name="summaryHe"
+            rows={2}
+            dir="rtl"
+            lang="he"
+            defaultValue={article.summaryHe}
+            className="textarea"
+            placeholder="תקציר קצר של המאמר"
+          />
+        </div>
+
+        <div>
+          <label htmlFor="bodyHe" className="field-label">
+            גוף המאמר (Body){" "}
+            <span className="field-hint">(Markdown)</span>
+          </label>
+          <textarea
+            id="bodyHe"
+            name="bodyHe"
+            rows={16}
+            dir="rtl"
+            lang="he"
+            defaultValue={article.bodyHe}
+            className="textarea text-sm"
+            placeholder="תוכן המאמר בפורמט Markdown…"
+          />
+        </div>
+      </section>
+
+      {/* ── Metadata ─────────────────────────────────────────────── */}
+      <section className="flex flex-col gap-5">
+        <SectionHeading>Metadata</SectionHeading>
+
+        <div>
+          <label htmlFor="status" className="field-label">Status</label>
+          <select id="status" name="status" defaultValue={article.status} className="select max-w-xs">
+            <option value="draft">Draft</option>
+            <option value="review">Review</option>
+            <option value="published">Published</option>
+          </select>
+        </div>
+
+        <div>
+          <label htmlFor="editorNote" className="field-label">
+            Editor note <span className="field-hint">(optional — describes what changed)</span>
+          </label>
+          <textarea id="editorNote" name="editorNote" rows={2} className="textarea" />
+        </div>
+      </section>
+
+      {/* ── References ───────────────────────────────────────────── */}
       <fieldset className="card p-5">
         <legend className="px-2 font-display text-lg font-bold text-ink">References</legend>
         <p className="mb-4 text-sm text-muted">

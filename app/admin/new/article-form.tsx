@@ -6,37 +6,100 @@ import { createArticle } from "../actions";
 
 export default function ArticleForm() {
   const [refs, setRefs] = useState([{ url: "", title: "", source: "" }]);
+  const [showHebrew, setShowHebrew] = useState(false);
 
   const addRef = () => setRefs([...refs, { url: "", title: "", source: "" }]);
   const removeRef = (i: number) => setRefs(refs.filter((_, idx) => idx !== i));
 
   return (
-    <form action={createArticle} className="flex flex-col gap-6">
-      <div>
-        <label htmlFor="title" className="field-label">Title</label>
-        <input id="title" name="title" required className="input" />
-      </div>
+    <form action={createArticle} className="flex flex-col gap-8">
 
-      <div>
-        <label htmlFor="summary" className="field-label">
-          Summary <span className="field-hint">(the lede shown under the title)</span>
-        </label>
-        <textarea id="summary" name="summary" rows={2} className="textarea" />
-      </div>
+      {/* ── English ───────────────────────────────────────────────── */}
+      <section className="flex flex-col gap-5">
+        <div className="flex items-center gap-3 border-b border-hairline pb-3">
+          <h2 className="font-display text-lg font-bold text-ink">English</h2>
+        </div>
 
-      <div>
-        <label htmlFor="body" className="field-label">
-          Body <span className="field-hint">(Markdown — headings, lists, links, tables)</span>
-        </label>
-        <textarea
-          id="body"
-          name="body"
-          rows={16}
-          required
-          className="textarea font-mono text-sm"
-        />
-      </div>
+        <div>
+          <label htmlFor="title" className="field-label">Title</label>
+          <input id="title" name="title" required className="input" />
+        </div>
 
+        <div>
+          <label htmlFor="summary" className="field-label">
+            Summary <span className="field-hint">(the lede shown under the title)</span>
+          </label>
+          <textarea id="summary" name="summary" rows={2} className="textarea" />
+        </div>
+
+        <div>
+          <label htmlFor="body" className="field-label">
+            Body <span className="field-hint">(Markdown — headings, lists, links, tables)</span>
+          </label>
+          <textarea id="body" name="body" rows={16} required className="textarea font-mono text-sm" />
+        </div>
+      </section>
+
+      {/* ── Hebrew (optional) ─────────────────────────────────────── */}
+      <section>
+        <div className="flex items-center gap-3 border-b border-hairline pb-3">
+          <h2 className="font-display text-lg font-bold text-ink">עברית</h2>
+          <span className="text-sm text-muted">Hebrew — optional</span>
+          <button
+            type="button"
+            onClick={() => setShowHebrew((v) => !v)}
+            className="ml-auto text-sm font-medium text-azure hover:text-techelet"
+          >
+            {showHebrew ? "Hide" : "Add Hebrew"}
+          </button>
+        </div>
+
+        {showHebrew && (
+          <div className="mt-5 flex flex-col gap-5">
+            <div>
+              <label htmlFor="titleHe" className="field-label">כותרת (Title)</label>
+              <input
+                id="titleHe"
+                name="titleHe"
+                dir="rtl"
+                lang="he"
+                className="input"
+                placeholder="כותרת המאמר בעברית"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="summaryHe" className="field-label">תקציר (Summary)</label>
+              <textarea
+                id="summaryHe"
+                name="summaryHe"
+                rows={2}
+                dir="rtl"
+                lang="he"
+                className="textarea"
+                placeholder="תקציר קצר של המאמר"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="bodyHe" className="field-label">
+                גוף המאמר (Body) <span className="field-hint">(Markdown)</span>
+              </label>
+              <textarea
+                id="bodyHe"
+                name="bodyHe"
+                rows={16}
+                dir="rtl"
+                lang="he"
+                className="textarea text-sm"
+                placeholder="תוכן המאמר בפורמט Markdown…"
+              />
+            </div>
+          </div>
+        )}
+      </section>
+
+      {/* ── Metadata ─────────────────────────────────────────────── */}
       <div>
         <label htmlFor="status" className="field-label">Status</label>
         <select id="status" name="status" className="select max-w-xs">
@@ -46,6 +109,7 @@ export default function ArticleForm() {
         </select>
       </div>
 
+      {/* ── References ───────────────────────────────────────────── */}
       <fieldset className="card p-5">
         <legend className="px-2 font-display text-lg font-bold text-ink">References</legend>
         <p className="mb-4 text-sm text-muted">

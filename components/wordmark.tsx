@@ -1,9 +1,9 @@
 import Link from "next/link";
 
-export default function Wordmark({ className = "" }: { className?: string }) {
+export default function Wordmark({ className = "", href = "/" }: { className?: string; href?: string }) {
   return (
     <Link
-      href="/"
+      href={href}
       className={`group inline-flex items-baseline gap-2 font-display ${className}`}
       aria-label="IsraelPedia — home"
     >

@@ -22,9 +22,14 @@ export const users = pgTable("users", {
 export const articles = pgTable("articles", {
   id: uuid("id").defaultRandom().primaryKey(),
   slug: text("slug").notNull().unique(),
+  // English (canonical source language)
   title: text("title").notNull(),
   summary: text("summary"),
   body: text("body").notNull(),
+  // Hebrew translation — populated by the drafting agent after the English draft
+  titleHe: text("title_he"),
+  summaryHe: text("summary_he"),
+  bodyHe: text("body_he"),
   status: articleStatus("status").notNull().default("draft"),
   origin: articleOrigin("origin").notNull().default("human"),
   createdBy: uuid("created_by").references(() => users.id),
@@ -44,6 +49,9 @@ export const articleRevisions = pgTable("article_revisions", {
   title: text("title").notNull(),
   summary: text("summary"),
   body: text("body").notNull(),
+  titleHe: text("title_he"),
+  summaryHe: text("summary_he"),
+  bodyHe: text("body_he"),
   editedBy: uuid("edited_by").references(() => users.id),
   editorNote: text("editor_note"),
   createdAt: timestamp("created_at").notNull().defaultNow(),

@@ -3,7 +3,10 @@ import { auth, signOut } from "@/auth";
 import Link from "next/link";
 
 export default async function AuthButtons() {
-  const session = await auth();
+  let session = null;
+  try {
+    session = await auth();
+  } catch {}
 
   if (session?.user) {
     const label = session.user.name ?? session.user.email ?? "Account";

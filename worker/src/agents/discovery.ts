@@ -17,14 +17,28 @@ export async function runDiscovery(): Promise<void> {
 
   const prompt = `You are a topic discovery agent for IsraelPedia — an online encyclopedia focused on Israel and Jewish history, culture, religion, language, science, notable people, and communities worldwide.
 
-Suggest 5 new article topics that would make valuable additions to this encyclopedia. Each topic should be notable and factual with enough depth to support a full encyclopedia article.
+Suggest 2 new article topics that would make valuable additions to this encyclopedia. Each topic should be notable and factual with enough depth to support a full encyclopedia article.
 
-CRITICAL — Title format rules:
-- Titles must be SHORT and CLEAN: 1 to 4 words in most cases.
-- Think like Wikipedia: "Dead Sea Scrolls", "Yitzhak Rabin", "Kibbutz Movement", "Israeli Air Force".
-- NEVER use colons, subtitles, or long descriptive phrases.
-- NEVER write titles like "The Nakba and Palestinian Displacement (1948): Military Strategy and Aftermath" — that is wrong.
-- The title should be the name of the thing, person, place, event, or concept — nothing more.
+CRITICAL — Title format rules. The title must be the NAME of the thing only — nothing else.
+
+✅ CORRECT examples (short, clean, just the name):
+- "Dead Sea Scrolls"
+- "Yitzhak Rabin"
+- "Kibbutz Movement"
+- "Israeli Air Force"
+- "Western Wall"
+- "Hebrew University"
+
+❌ WRONG examples (too long, descriptive, uses colons or subtitles — NEVER do this):
+- "The Dead Sea Scrolls: History, Discovery, and Religious Significance" → WRONG
+- "Yitzhak Rabin and the Oslo Peace Process: A Political Biography" → WRONG
+- "The Role of the Israeli Air Force in Modern Middle Eastern Conflicts" → WRONG
+- "History and Cultural Significance of the Western Wall in Judaism" → WRONG
+
+Rules:
+- 1 to 4 words maximum in most cases. 5 words only if truly necessary (e.g. "Battle of the Bulge").
+- No colons. No subtitles. No parenthetical dates. No descriptive phrases.
+- Just the name.
 
 Existing topics to AVOID (do not suggest these or close variants):
 ${existingTopics.map((t) => `- ${t}`).join("\n") || "(none yet)"}

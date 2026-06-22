@@ -46,6 +46,9 @@ export default async function EditArticlePage({
           title: article.title,
           summary: article.summary ?? "",
           body: article.body,
+          titleHe: article.titleHe ?? "",
+          summaryHe: article.summaryHe ?? "",
+          bodyHe: article.bodyHe ?? "",
           status: article.status,
         }}
         initialRefs={initialRefs}

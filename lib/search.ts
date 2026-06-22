@@ -1,26 +1,40 @@
 import { db } from "@/db";
 import { articles } from "@/db/schema";
-import { and, eq, ilike, or, sql } from "drizzle-orm";
+import { and, eq, ilike, isNull, not, or, sql } from "drizzle-orm";
 
 export interface SearchResult {
   id: string;
   slug: string;
   title: string;
   summary: string | null;
+  titleHe: string | null;
+  summaryHe: string | null;
+  hasHebrew: boolean;
 }
+
+function isHebrewQuery(q: string): boolean {
+  return /[֐-׿]/.test(q);
+}
+
+const resultCols = {
+  id: articles.id,
+  slug: articles.slug,
+  title: articles.title,
+  summary: articles.summary,
+  titleHe: articles.titleHe,
+  summaryHe: articles.summaryHe,
+  hasHebrew: sql<boolean>`(${articles.bodyHe} IS NOT NULL)`,
+};
 
 export async function searchArticles(query: string): Promise<SearchResult[]> {
   const q = query.trim();
   if (!q) return [];
 
-  // Full-text search ranked by relevance
-  const ftsResults = await db
-    .select({
-      id: articles.id,
-      slug: articles.slug,
-      title: articles.title,
-      summary: articles.summary,
-    })
+  const heQuery = isHebrewQuery(q);
+
+  // ── English FTS (ranked) ──────────────────────────────────────────────────
+  const enFts = await db
+    .select(resultCols)
     .from(articles)
     .where(
       and(
@@ -36,31 +50,62 @@ export async function searchArticles(query: string): Promise<SearchResult[]> {
     )
     .limit(20);
 
-  // ILIKE fallback — catches partial matches FTS misses (e.g. "tel avi" → "Tel Aviv")
-  const ftsIdSet = new Set(ftsResults.map((r) => r.id));
-
-  const ilikeResults = await db
-    .select({
-      id: articles.id,
-      slug: articles.slug,
-      title: articles.title,
-      summary: articles.summary,
-    })
+  // ── Hebrew FTS using 'simple' config (no stemming; appropriate for Hebrew) ─
+  const heFts = await db
+    .select(resultCols)
     .from(articles)
     .where(
       and(
         eq(articles.status, "published"),
-        or(
-          ilike(articles.title, `%${q}%`),
-          ilike(articles.summary, `%${q}%`)
-        )
+        not(isNull(articles.bodyHe)),
+        sql`to_tsvector('simple', coalesce(${articles.titleHe}, '') || ' ' || coalesce(${articles.bodyHe}, '')) @@ plainto_tsquery('simple', ${q})`
+      )
+    )
+    .orderBy(
+      sql`ts_rank(
+        to_tsvector('simple', coalesce(${articles.titleHe}, '') || ' ' || coalesce(${articles.bodyHe}, '')),
+        plainto_tsquery('simple', ${q})
+      ) DESC`
+    )
+    .limit(20);
+
+  // ── English ILIKE fallback (partial / fuzzy match) ────────────────────────
+  const enIlike = await db
+    .select(resultCols)
+    .from(articles)
+    .where(
+      and(
+        eq(articles.status, "published"),
+        or(ilike(articles.title, `%${q}%`), ilike(articles.summary, `%${q}%`))
       )
     )
     .limit(10);
 
-  // FTS results first, then ILIKE results not already returned
-  return [
-    ...ftsResults,
-    ...ilikeResults.filter((r) => !ftsIdSet.has(r.id)),
-  ];
+  // ── Hebrew ILIKE fallback ─────────────────────────────────────────────────
+  const heIlike = await db
+    .select(resultCols)
+    .from(articles)
+    .where(
+      and(
+        eq(articles.status, "published"),
+        or(ilike(articles.titleHe, `%${q}%`), ilike(articles.summaryHe, `%${q}%`))
+      )
+    )
+    .limit(10);
+
+  // ── Merge & deduplicate ───────────────────────────────────────────────────
+  // When the query is in Hebrew, surface Hebrew FTS results first.
+  const ordered = heQuery
+    ? [...heFts, ...enFts, ...heIlike, ...enIlike]
+    : [...enFts, ...heFts, ...enIlike, ...heIlike];
+
+  const seen = new Set<string>();
+  const results: SearchResult[] = [];
+  for (const r of ordered) {
+    if (!seen.has(r.id)) {
+      seen.add(r.id);
+      results.push(r);
+    }
+  }
+  return results;
 }
