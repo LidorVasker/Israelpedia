@@ -1,11 +1,26 @@
 import { db } from "../../../db/index";
 import { articles, articleReferences, articleRevisions } from "../../../db/schema";
-import { and, eq, isNull, not, or } from "drizzle-orm";
+import { and, desc, eq, isNull, not, or } from "drizzle-orm";
 import Anthropic from "@anthropic-ai/sdk";
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 const MAX_PER_RUN = 10;
+
+function extractJson(text: string): string {
+  const stripped = text.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "").trim();
+  if (stripped.startsWith("{") || stripped.startsWith("[")) return stripped;
+  const firstBrace = text.indexOf("{");
+  const firstBracket = text.indexOf("[");
+  const start =
+    firstBrace >= 0 && (firstBracket < 0 || firstBrace < firstBracket)
+      ? firstBrace
+      : firstBracket;
+  if (start < 0) return stripped;
+  const endChar = text[start] === "{" ? "}" : "]";
+  const end = text.lastIndexOf(endChar);
+  return end > start ? text.slice(start, end + 1) : stripped;
+}
 
 interface EnglishDraft {
   summary: string;
@@ -46,8 +61,7 @@ Respond ONLY in this JSON format — no markdown wrapper, no explanation outside
     messages: [{ role: "user", content: prompt }],
   });
   const text = (message.content[0] as any).text as string;
-  const clean = text.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "").trim();
-  const parsed = JSON.parse(clean);
+  const parsed = JSON.parse(extractJson(text));
   if (!parsed.body || typeof parsed.body !== "string") throw new Error("Missing or invalid body in English draft");
   return parsed;
 }
@@ -57,6 +71,8 @@ async function translateToHebrew(
   englishSummary: string,
   englishBody: string
 ): Promise<HebrewTranslation> {
+  // Use delimiters instead of JSON to avoid JSON-escaping failures on Hebrew text
+  // that contains quotes, colons, or other characters Haiku doesn't escape reliably.
   const prompt = `You are an expert translator and encyclopedic writer. Translate the following English encyclopedia article into high-quality Modern Israeli Hebrew.
 
 Requirements:
@@ -73,12 +89,13 @@ English summary: ${englishSummary}
 English body:
 ${englishBody}
 
-Respond ONLY in this JSON format — no markdown wrapper, no explanation outside the JSON:
-{
-  "titleHe": "כותרת בעברית",
-  "summaryHe": "תקציר בעברית",
-  "bodyHe": "גוף המאמר בעברית בפורמט Markdown..."
-}`;
+Respond using EXACTLY this format with the three delimiters on their own lines — no other text:
+===TITLE_HE===
+כותרת בעברית
+===SUMMARY_HE===
+תקציר בעברית
+===BODY_HE===
+גוף המאמר בעברית בפורמט Markdown`;
 
   const message = await client.messages.create({
     model: "claude-haiku-4-5-20251001",
@@ -86,10 +103,17 @@ Respond ONLY in this JSON format — no markdown wrapper, no explanation outside
     messages: [{ role: "user", content: prompt }],
   });
   const text = (message.content[0] as any).text as string;
-  const clean = text.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "").trim();
-  const parsed = JSON.parse(clean);
-  if (!parsed.bodyHe || typeof parsed.bodyHe !== "string") throw new Error("Missing or invalid bodyHe in Hebrew translation");
-  return parsed;
+
+  const titleMatch = text.match(/===TITLE_HE===\s*([\s\S]*?)\s*===SUMMARY_HE===/);
+  const summaryMatch = text.match(/===SUMMARY_HE===\s*([\s\S]*?)\s*===BODY_HE===/);
+  const bodyMatch = text.match(/===BODY_HE===\s*([\s\S]+)/);
+
+  const titleHe = titleMatch?.[1]?.trim() ?? "";
+  const summaryHe = summaryMatch?.[1]?.trim() ?? "";
+  const bodyHe = bodyMatch?.[1]?.trim() ?? "";
+
+  if (!bodyHe) throw new Error("Missing bodyHe in Hebrew translation response");
+  return { titleHe, summaryHe, bodyHe };
 }
 
 export async function runDrafting(): Promise<void> {
@@ -102,6 +126,7 @@ export async function runDrafting(): Promise<void> {
     .select()
     .from(articles)
     .where(and(eq(articles.status, "draft"), aiOrigins!, eq(articles.body, "")))
+    .orderBy(desc(articles.createdAt))
     .limit(MAX_PER_RUN);
 
   // ── 2. Articles with English but no Hebrew (failed/missed translation) ────
@@ -116,6 +141,7 @@ export async function runDrafting(): Promise<void> {
         isNull(articles.bodyHe)
       )
     )
+    .orderBy(desc(articles.createdAt))
     .limit(MAX_PER_RUN - needsEnglish.length);
 
   console.log(

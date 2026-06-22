@@ -71,8 +71,15 @@ Rules:
 - If the topic is a person, they must be Jewish, Israeli, or have significant documented ties to Israel or Jewish history.
 
 If ACCEPTING, you must provide:
-- "englishTitle": the canonical English title for this article (short, clean, 1–4 words like a Wikipedia article title). If the topic was submitted in Hebrew, determine the correct English equivalent. Always clean up overly long or descriptive titles into the bare name.
-- "hebrewTitle": the Hebrew title for this article (if you know the standard Hebrew form; otherwise omit or leave null).
+- "englishTitle": the bare name of the subject — nothing else. Think: Wikipedia article title. 1–4 words in most cases.
+  CRITICAL cleanup examples — always apply this logic:
+  ✅ Input: "Josephus Flavius: Historian, Eyewitness, Jewish-Roman Relations, and Historical Reliability" → "Josephus Flavius"
+  ✅ Input: "The Babylonian Exile and the Restoration (586-516 BCE): Displacement, Diaspora Formation" → "Babylonian Exile"
+  ✅ Input: "Jewish Printing and Publishing in Early Modern Europe: Hebrew Printing Press, Book Production" → "Hebrew Printing Press"
+  ✅ Input: "Israeli Air Force" → "Israeli Air Force"  (already clean — leave it)
+  ✅ Input: "חנוכה" → "Hanukkah"  (Hebrew → English equivalent)
+  NEVER output a colon, a subtitle, or a phrase longer than 5 words.
+- "hebrewTitle": the Hebrew title for this article (standard Israeli Hebrew form; omit if unsure).
 
 Respond ONLY in this JSON format — no markdown, no explanation:
 { "decision": "reject", "reason": "..." }
@@ -87,8 +94,7 @@ or
         messages: [{ role: "user", content: prompt }],
       });
       const text = (message.content[0] as any).text as string;
-      const clean = text.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "").trim();
-      decision = JSON.parse(clean);
+      decision = JSON.parse(extractJson(text));
     } catch (err) {
       console.error(`[Triage] Anthropic call failed for "${suggestion.topic}":`, err);
       continue;
