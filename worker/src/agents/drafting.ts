@@ -5,6 +5,9 @@ import Anthropic from "@anthropic-ai/sdk";
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
+const DRAFT_MODEL = "claude-haiku-4-5-20251001";   // English drafting
+const HEBREW_MODEL = "claude-sonnet-4-5";           // Hebrew generation
+
 const MAX_PER_RUN = 10;
 
 function extractJson(text: string): string {
@@ -56,7 +59,7 @@ Respond ONLY in this JSON format — no markdown wrapper, no explanation outside
 }`;
 
   const message = await client.messages.create({
-    model: "claude-haiku-4-5-20251001",
+    model: DRAFT_MODEL,
     max_tokens: 4096,
     messages: [{ role: "user", content: prompt }],
   });
@@ -71,22 +74,33 @@ async function translateToHebrew(
   englishSummary: string,
   englishBody: string
 ): Promise<HebrewTranslation> {
-  // Use delimiters instead of JSON to avoid JSON-escaping failures on Hebrew text
-  // that contains quotes, colons, or other characters Haiku doesn't escape reliably.
-  const prompt = `You are an expert translator and encyclopedic writer. Translate the following English encyclopedia article into high-quality Modern Israeli Hebrew.
+  const prompt = `You are a senior Israeli encyclopedia editor with native Hebrew fluency writing for IsraelPedia — a bilingual Hebrew-English encyclopedia about Israel and Jewish history, culture, religion, science, and communities.
 
-Requirements:
-- Produce fluent, natural Hebrew that reads as if written by a knowledgeable Israeli academic or editor — NOT a word-for-word translation.
-- Preserve all Markdown structure exactly: ## headings, **bold**, bullet lists, numbered lists, etc.
-- Use the standard Hebrew names for places, people, and concepts as commonly used in Israeli Hebrew (e.g. "Jerusalem" → "ירושלים", "Moses" → "משה").
-- Transliterate foreign names that have no standard Hebrew form phonetically.
-- Dates, numbers, and technical terms should be rendered naturally in Hebrew.
-- The article should read right-to-left naturally — do not add RTL Unicode marks.
-- Match the encyclopedic register of the English original.
+Your task: produce a high-quality Hebrew encyclopedia article about "${englishTitle}" based on the English source article below. This is NOT a mechanical translation — it is a Hebrew article that conveys the same knowledge in authentic, fluent Modern Israeli Hebrew.
 
-English title: ${englishTitle}
-English summary: ${englishSummary}
-English body:
+LANGUAGE REQUIREMENTS:
+- Write in Modern Israeli Hebrew (עברית ישראלית מודרנית) as used in quality Israeli newspapers, academic publications, and reference works like the Hebrew Wikipedia.
+- Never produce word-for-word translation. Restructure sentences to follow natural Hebrew syntax.
+- Idioms, expressions, and sentence constructions must be natural Hebrew — not English sentences mapped to Hebrew words.
+- Use standard Israeli Hebrew terms for all concepts, places, and people (e.g. ירושלים not ג'רוסלם, משה רבנו not מושה).
+- For foreign names with no standard Hebrew form, use accepted Israeli phonetic transliteration.
+- Dates and numbers written naturally in Hebrew context.
+
+STRUCTURE REQUIREMENTS:
+- Preserve all Markdown formatting exactly: ## headings stay ## headings in Hebrew, **bold** stays **bold**, bullet lists stay bullet lists.
+- Article structure and section order should match the English source.
+- Do NOT add RTL unicode marks — the UI handles direction.
+
+QUALITY CHECK — before outputting, verify:
+- Every sentence reads naturally to a native Hebrew speaker.
+- No sentence is a literal word-for-word mapping from English.
+- All proper nouns use their correct standard Hebrew forms.
+- The text flows naturally when read right-to-left.
+
+English source:
+Title: ${englishTitle}
+Summary: ${englishSummary}
+Body:
 ${englishBody}
 
 Respond using EXACTLY this format with the three delimiters on their own lines — no other text:
@@ -98,7 +112,7 @@ Respond using EXACTLY this format with the three delimiters on their own lines �
 גוף המאמר בעברית בפורמט Markdown`;
 
   const message = await client.messages.create({
-    model: "claude-haiku-4-5-20251001",
+    model: HEBREW_MODEL,
     max_tokens: 4096,
     messages: [{ role: "user", content: prompt }],
   });

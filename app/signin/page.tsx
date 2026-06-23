@@ -27,9 +27,10 @@ const googleSvg = (
 export default async function SignInPage({
   searchParams,
 }: {
-  searchParams: Promise<{ registered?: string; reset?: string }>;
+  searchParams: Promise<{ registered?: string; reset?: string; callbackUrl?: string }>;
 }) {
-  const { registered, reset } = await searchParams;
+  const { registered, reset, callbackUrl } = await searchParams;
+  const redirectTo = callbackUrl || "/";
 
   return (
     <main
@@ -48,7 +49,7 @@ export default async function SignInPage({
           Welcome back to IsraelPedia.
         </p>
 
-        <SignInForm registered={registered === "true"} reset={reset === "true"} />
+        <SignInForm registered={registered === "true"} reset={reset === "true"} callbackUrl={redirectTo} />
 
         <div
           style={{
@@ -66,7 +67,7 @@ export default async function SignInPage({
         <form
           action={async () => {
             "use server";
-            await signIn("google", { redirectTo: "/" });
+            await signIn("google", { redirectTo });
           }}
         >
           <button

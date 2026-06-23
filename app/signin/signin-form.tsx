@@ -14,14 +14,17 @@ const inputStyle = {
 export default function SignInForm({
   registered,
   reset,
+  callbackUrl = "/",
 }: {
   registered?: boolean;
   reset?: boolean;
+  callbackUrl?: string;
 }) {
   const [state, action, pending] = useActionState(signInWithCredentials, null);
 
   return (
     <form action={action} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+      <input type="hidden" name="callbackUrl" value={callbackUrl} />
       {registered && (
         <p style={{ color: "green", margin: 0 }}>Account created! You can now sign in.</p>
       )}

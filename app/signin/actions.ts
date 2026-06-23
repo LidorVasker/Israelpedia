@@ -5,11 +5,12 @@ import { AuthError } from "next-auth";
 type State = { error: string } | null;
 
 export async function signInWithCredentials(_prev: State, formData: FormData): Promise<State> {
+  const callbackUrl = (formData.get("callbackUrl") as string) || "/";
   try {
     await signIn("credentials", {
       email: (formData.get("email") as string)?.trim().toLowerCase(),
       password: formData.get("password") as string,
-      redirectTo: "/",
+      redirectTo: callbackUrl,
     });
   } catch (err) {
     if (err instanceof AuthError) {
