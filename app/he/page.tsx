@@ -50,12 +50,31 @@ export default async function HebrewHomePage() {
             המדע והאנשים והקהילות שעיצבו אותם.
           </p>
 
-          {/* Topic chips → search is in English, queries passed as-is */}
-          <div className="mt-8 flex flex-wrap justify-center gap-2">
+          {/* Search bar */}
+          <form action="/he/search" method="get" role="search" className="relative mx-auto mt-8 max-w-lg">
+            <svg
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-faint"
+              width="17" height="17" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"
+            >
+              <circle cx="11" cy="11" r="7" />
+              <path d="m20 20-3.5-3.5" />
+            </svg>
+            <input
+              type="search"
+              name="q"
+              placeholder="חיפוש בישראלפדיה..."
+              aria-label="חיפוש מאמרים"
+              className="input w-full !pl-9"
+            />
+          </form>
+
+          {/* Topic chips */}
+          <div className="mt-4 flex flex-wrap justify-center gap-2">
             {TOPICS_HE.map((t) => (
               <Link
                 key={t.label}
-                href={`/search?q=${encodeURIComponent(t.query)}`}
+                href={`/he/search?q=${encodeURIComponent(t.query)}`}
                 className="chip"
               >
                 {t.label}

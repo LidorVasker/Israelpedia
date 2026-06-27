@@ -28,10 +28,15 @@ function SearchFieldInner({
 }) {
   const pathname = usePathname();
   const params = useSearchParams();
-  const currentQuery = pathname === "/search" ? (params.get("q") ?? "") : "";
+  const isHebrew = pathname.startsWith("/he");
+  const searchAction = isHebrew ? "/he/search" : "/search";
+  const currentQuery =
+    pathname === "/search" || pathname === "/he/search"
+      ? (params.get("q") ?? "")
+      : "";
 
   return (
-    <form action="/search" method="get" role="search" className={`relative ${className}`}>
+    <form action={searchAction} method="get" role="search" className={`relative ${className}`}>
       <SearchIcon />
       <input
         key={currentQuery}
@@ -39,8 +44,8 @@ function SearchFieldInner({
         name="q"
         defaultValue={currentQuery}
         autoFocus={autoFocus}
-        placeholder="Search IsraelPedia"
-        aria-label="Search articles"
+        placeholder={isHebrew ? "חיפוש בישראלפדיה" : "Search IsraelPedia"}
+        aria-label={isHebrew ? "חיפוש מאמרים" : "Search articles"}
         className="input !pl-9"
       />
     </form>
