@@ -1,5 +1,5 @@
 import { db } from "../../../db/index";
-import { articles, suggestions } from "../../../db/schema";
+import { suggestions } from "../../../db/schema";
 import Anthropic from "@anthropic-ai/sdk";
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
@@ -22,14 +22,6 @@ function extractJson(text: string): string {
 export async function runDiscoveryBasic(): Promise<void> {
   console.log("[DiscoveryBasic] Starting...");
 
-  const existingArticles    = await db.select({ title: articles.title }).from(articles);
-  const existingSuggestions = await db.select({ topic: suggestions.topic }).from(suggestions);
-
-  const existingTopics = [
-    ...existingArticles.map((a) => a.title),
-    ...existingSuggestions.map((s) => s.topic),
-  ];
-
   const prompt = `You are a topic discovery agent for IsraelPedia — an online encyclopedia focused on Israel and Jewish history, culture, religion, language, science, notable people, and communities worldwide.
 
 Your job is to propose 8 foundational, everyday topics that a general audience would commonly search for. Focus on these categories:
@@ -48,9 +40,6 @@ CRITICAL — Title format rules:
 - Think like Wikipedia: "Dead Sea", "Passover", "Iron Dome", "Golda Meir".
 - NEVER use colons, subtitles, or long descriptive phrases in the title.
 - The title should be the name of the thing, person, place, event, or concept — nothing more.
-
-Existing topics to AVOID (do not suggest these or close variants):
-${existingTopics.map((t) => `- ${t}`).join("\n") || "(none yet)"}
 
 Respond ONLY in this JSON format — no markdown, no explanation:
 [
@@ -72,18 +61,19 @@ Respond ONLY in this JSON format — no markdown, no explanation:
     return;
   }
 
-  const existingLower = existingTopics.map((t) => t.toLowerCase());
+  // Dedup within this batch only — cross-batch and fuzzy dedup is handled by triage
+  const seenThisRun = new Set<string>();
   let inserted = 0;
 
   for (const p of proposals) {
     if (!p.topic?.trim() || !p.rationale?.trim()) continue;
-    const topicLower = p.topic.toLowerCase().trim();
-    // Exact match only — substring matching against long titles blocks valid new topics
-    const isDuplicate = existingLower.some((t) => t === topicLower);
-    if (isDuplicate) {
-      console.log(`[DiscoveryBasic] Skip duplicate: "${p.topic}"`);
+    const key = p.topic.toLowerCase().trim();
+    if (seenThisRun.has(key)) {
+      console.log(`[DiscoveryBasic] Skip in-batch duplicate: "${p.topic}"`);
       continue;
     }
+    seenThisRun.add(key);
+
     await db.insert(suggestions).values({
       topic: p.topic.trim(),
       rationale: p.rationale.trim(),

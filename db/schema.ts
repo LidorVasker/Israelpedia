@@ -32,6 +32,7 @@ export const articles = pgTable("articles", {
   bodyHe: text("body_he"),
   status: articleStatus("status").notNull().default("draft"),
   origin: articleOrigin("origin").notNull().default("human"),
+  category: text("category"),
   createdBy: uuid("created_by").references(() => users.id),
   viewCount: integer("view_count").notNull().default(0),
   createdAt: timestamp("created_at").notNull().defaultNow(),
@@ -64,6 +65,7 @@ export const suggestions = pgTable("suggestions", {
   suggestedBy: uuid("suggested_by").references(() => users.id),
   status: suggestionStatus("status").notNull().default("pending"),
   reviewNote: text("review_note"),
+  category: text("category"),
   articleId: uuid("article_id").references(() => articles.id),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });

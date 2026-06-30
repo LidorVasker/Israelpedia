@@ -2,6 +2,14 @@ import { db } from "../../../db/index";
 import { articles, suggestions } from "../../../db/schema";
 import { eq } from "drizzle-orm";
 import Anthropic from "@anthropic-ai/sdk";
+import {
+  findSimilarTopic,
+  isSameTopicLLM,
+  validateCategory,
+  VALID_CATEGORIES,
+  AUTO_DUPLICATE,
+  BORDERLINE,
+} from "../lib/dedup";
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -31,7 +39,13 @@ function slugify(title: string): string {
 
 type TriageDecision =
   | { decision: "reject"; reason: string }
-  | { decision: "accept"; reason: string; englishTitle: string; hebrewTitle?: string };
+  | {
+      decision: "accept";
+      reason: string;
+      englishTitle: string;
+      hebrewTitle?: string;
+      category?: string;
+    };
 
 export async function runTriage(): Promise<void> {
   console.log("[Triage] Starting...");
@@ -44,6 +58,7 @@ export async function runTriage(): Promise<void> {
   console.log(`[Triage] Found ${pending.length} pending suggestions to triage.`);
 
   for (const suggestion of pending) {
+    // ── Step 1: LLM scope check ─────────────────────────────────────────────
     const prompt = `You are a strict scope-enforcement agent for IsraelPedia — an encyclopedia EXCLUSIVELY covering topics connected to Israel or Jewish history, culture, religion, language, science, notable people, and Jewish communities worldwide.
 
 The topic suggestion may be written in English OR in Hebrew. Evaluate it regardless of language.
@@ -80,11 +95,13 @@ If ACCEPTING, you must provide:
   ✅ Input: "חנוכה" → "Hanukkah"  (Hebrew → English equivalent)
   NEVER output a colon, a subtitle, or a phrase longer than 5 words.
 - "hebrewTitle": the Hebrew title for this article (standard Israeli Hebrew form; omit if unsure).
+- "category": one of the following that best fits the topic:
+  ${VALID_CATEGORIES.join(", ")}
 
 Respond ONLY in this JSON format — no markdown, no explanation:
 { "decision": "reject", "reason": "..." }
 or
-{ "decision": "accept", "reason": "...", "englishTitle": "Clean English Title", "hebrewTitle": "כותרת בעברית" }`;
+{ "decision": "accept", "reason": "...", "englishTitle": "Clean English Title", "hebrewTitle": "כותרת בעברית", "category": "category_value" }`;
 
     let decision: TriageDecision;
     try {
@@ -105,8 +122,54 @@ or
     if (decision.decision === "accept") {
       const englishTitle = decision.englishTitle?.trim() || suggestion.topic;
       const hebrewTitle = decision.hebrewTitle?.trim() || null;
-      const slug = slugify(englishTitle);
+      const category = validateCategory(decision.category);
 
+      // ── Step 2: Database dedup check ──────────────────────────────────────
+      let dupRejected = false;
+      try {
+        const { found, match } = await findSimilarTopic(
+          englishTitle,
+          hebrewTitle || undefined
+        );
+
+        if (found && match) {
+          const pct = (match.similarity * 100).toFixed(0);
+          let isDuplicate = false;
+
+          if (match.similarity >= AUTO_DUPLICATE) {
+            // High confidence — skip LLM call
+            isDuplicate = true;
+            console.log(
+              `[Triage] AUTO-DUPLICATE (${pct}%): "${englishTitle}" ≈ "${match.title}"`
+            );
+          } else if (match.similarity >= BORDERLINE) {
+            // Borderline — ask LLM
+            isDuplicate = await isSameTopicLLM(englishTitle, match.title);
+            console.log(
+              `[Triage] LLM-DEDUP (${pct}%): "${englishTitle}" vs "${match.title}" → ${isDuplicate ? "SAME" : "DIFFERENT"}`
+            );
+          }
+
+          if (isDuplicate) {
+            await db
+              .update(suggestions)
+              .set({
+                status: "rejected",
+                reviewNote: `Duplicate of existing ${match.type} "${match.title}" (${pct}% similarity).`,
+              })
+              .where(eq(suggestions.id, suggestion.id));
+            console.log(`[Triage] REJECTED as duplicate: "${englishTitle}"`);
+            dupRejected = true;
+          }
+        }
+      } catch (err) {
+        console.error(`[Triage] Dedup check failed for "${englishTitle}" — proceeding with accept:`, err);
+      }
+
+      if (dupRejected) continue;
+
+      // ── Step 3: Accept — create article and mark suggestion ───────────────
+      const slug = slugify(englishTitle);
       await db.transaction(async (tx) => {
         const [article] = await tx
           .insert(articles)
@@ -117,16 +180,22 @@ or
             body: "",
             status: "draft",
             origin,
+            category,
             createdBy: null,
           })
           .returning({ id: articles.id });
 
         await tx
           .update(suggestions)
-          .set({ status: "accepted", articleId: article.id })
+          .set({ status: "accepted", articleId: article.id, category })
           .where(eq(suggestions.id, suggestion.id));
       });
-      console.log(`[Triage] ACCEPTED (${origin}): "${englishTitle}"${hebrewTitle ? ` / "${hebrewTitle}"` : ""}`);
+
+      console.log(
+        `[Triage] ACCEPTED (${origin}): "${englishTitle}"` +
+          (hebrewTitle ? ` / "${hebrewTitle}"` : "") +
+          (category ? ` [${category}]` : "")
+      );
     } else {
       await db
         .update(suggestions)
