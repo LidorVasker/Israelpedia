@@ -2,6 +2,8 @@ import { db } from "@/db";
 import { articles } from "@/db/schema";
 import { eq, desc } from "drizzle-orm";
 import Link from "next/link";
+import ArticleGrid from "@/components/article-grid";
+import { fetchMoreArticles } from "@/app/actions/articles";
 
 const TOPICS = [
   "People",
@@ -13,12 +15,25 @@ const TOPICS = [
   "Communities",
 ];
 
+const INITIAL_SIZE = 20;
+
 export default async function Home() {
-  const published = await db
-    .select({ id: articles.id, slug: articles.slug, title: articles.title, summary: articles.summary })
+  const rows = await db
+    .select({
+      id: articles.id,
+      slug: articles.slug,
+      title: articles.title,
+      summary: articles.summary,
+      titleHe: articles.titleHe,
+      summaryHe: articles.summaryHe,
+    })
     .from(articles)
     .where(eq(articles.status, "published"))
-    .orderBy(desc(articles.publishedAt));
+    .orderBy(desc(articles.publishedAt))
+    .limit(INITIAL_SIZE + 1);
+
+  const initialArticles = rows.slice(0, INITIAL_SIZE);
+  const initialHasMore = rows.length > INITIAL_SIZE;
 
   return (
     <main>
@@ -88,30 +103,13 @@ export default async function Home() {
           </div>
         </div>
 
-        {published.length > 0 ? (
-          <ul className="grid gap-4 sm:grid-cols-2">
-            {published.map((a) => (
-              <li key={a.id}>
-                <Link
-                  href={`/article/${a.slug}`}
-                  className="group flex h-full flex-col rounded-xl border border-hairline bg-card p-6 transition-all hover:border-techelet hover:shadow-[0_2px_20px_-8px_rgba(27,59,107,0.25)]"
-                >
-                  <h3 className="font-display text-xl font-bold leading-snug text-ink transition-colors group-hover:text-techelet">
-                    {a.title}
-                  </h3>
-                  {a.summary && (
-                    <p className="mt-2 line-clamp-3 flex-1 text-[0.95rem] leading-relaxed text-muted">
-                      {a.summary}
-                    </p>
-                  )}
-                  <span className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-azure">
-                    Read article
-                    <span aria-hidden="true" className="transition-transform group-hover:translate-x-0.5">→</span>
-                  </span>
-                </Link>
-              </li>
-            ))}
-          </ul>
+        {initialArticles.length > 0 ? (
+          <ArticleGrid
+            initialArticles={initialArticles}
+            initialHasMore={initialHasMore}
+            lang="en"
+            fetchMore={fetchMoreArticles}
+          />
         ) : (
           <div className="rounded-xl border border-dashed border-hairline-strong bg-card/50 px-6 py-16 text-center">
             <p className="font-display text-xl text-ink">The library is just getting started.</p>
