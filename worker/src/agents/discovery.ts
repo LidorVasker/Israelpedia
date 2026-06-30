@@ -1,6 +1,7 @@
 import { db } from "../../../db/index";
 import { suggestions } from "../../../db/schema";
 import Anthropic from "@anthropic-ai/sdk";
+import { VALID_CATEGORIES } from "../lib/dedup";
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -24,7 +25,7 @@ export async function runDiscovery(): Promise<void> {
 
   const prompt = `You are a topic discovery agent for IsraelPedia — an online encyclopedia focused on Israel and Jewish history, culture, religion, language, science, notable people, and communities worldwide.
 
-Suggest 2 new article topics that would make valuable additions to this encyclopedia. Each topic should be notable and factual with enough depth to support a full encyclopedia article.
+Suggest 4 new article topics that would make valuable additions to this encyclopedia. Each topic should be notable and factual with enough depth to support a full encyclopedia article.
 
 CRITICAL — Title format rules. The title must be the NAME of the thing only — nothing else.
 
@@ -47,12 +48,15 @@ Rules:
 - No colons. No subtitles. No parenthetical dates. No descriptive phrases.
 - Just the name.
 
+VALID CATEGORIES (pick the best fit for each proposal):
+${VALID_CATEGORIES.join(", ")}
+
 Respond ONLY in this JSON format — no markdown, no explanation:
 [
-  { "topic": "Topic Name", "rationale": "Why this topic belongs in IsraelPedia and what the article would cover." }
+  { "topic": "Topic Name", "rationale": "Why this topic belongs in IsraelPedia and what the article would cover.", "category": "category_value" }
 ]`;
 
-  let proposals: { topic: string; rationale: string }[] = [];
+  let proposals: { topic: string; rationale: string; category?: string }[] = [];
   try {
     const message = await client.messages.create({
       model: "claude-haiku-4-5-20251001",
@@ -80,14 +84,20 @@ Respond ONLY in this JSON format — no markdown, no explanation:
     }
     seenThisRun.add(key);
 
+    const category =
+      p.category && (VALID_CATEGORIES as readonly string[]).includes(p.category)
+        ? p.category
+        : null;
+
     await db.insert(suggestions).values({
       topic: p.topic.trim(),
       rationale: p.rationale.trim(),
       suggestedBy: null,
       status: "pending",
+      category: category ?? undefined,
     });
     inserted++;
-    console.log(`[Discovery] Inserted: "${p.topic}"`);
+    console.log(`[Discovery] Inserted: "${p.topic}"${category ? ` [${category}]` : ""}`);
   }
 
   console.log(`[Discovery] Done — inserted ${inserted} new suggestions.`);
