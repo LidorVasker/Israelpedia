@@ -55,6 +55,9 @@ export default async function AdminPage({
         <Link href="/admin/new" className="btn btn-primary">
           <span aria-hidden="true">+</span> New article
         </Link>
+        <a href="#suggestions" className="text-xs text-muted hover:text-ink transition-colors">
+          ↓ Suggestions ({pendingSuggestions.length})
+        </a>
         <form method="get" role="search" className="relative ml-auto w-full max-w-xs">
           <svg
             className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-faint"
@@ -146,7 +149,7 @@ export default async function AdminPage({
       </div>
 
       {/* Suggestions queue */}
-      <section className="mt-12">
+      <section id="suggestions" className="mt-12">
         <div className="mb-5 flex items-center gap-3 border-b border-hairline pb-3">
           <h2 className="font-display text-2xl font-bold text-ink">Pending suggestions</h2>
           <span className="badge bg-brass/15 text-brass">{pendingSuggestions.length}</span>
